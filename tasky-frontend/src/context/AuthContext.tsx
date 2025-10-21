@@ -32,6 +32,7 @@ const defaultContextValue: AuthContextType = {
   isUser: false,
   userId: undefined,
   actionRequired: null,
+  isVerified: false, // <-- NEW FLAG
 };
 
 export const AuthContext =
@@ -46,6 +47,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [actionRequired, setActionRequired] = useState<string | null>(null);
+  const [isVerified, setIsVerified] = useState<boolean>(false); // <-- NEW STATE
 
   const login = useCallback(async (email: string, password: string) => {
     setLoading(true);
@@ -54,7 +56,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await apiService.login(email, password);
 
       // Backend returns user object in both cases (200 and 202)
-      // Set the actual logged-in user data
       setUser(response.user);
 
       // Check if password change is required
@@ -80,6 +81,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = useCallback(() => {
     setUser(null);
     setActionRequired(null);
+    setIsVerified(false); // Clear verified status on logout
     localStorage.removeItem("currentUser");
     localStorage.removeItem("actionRequired");
   }, []);
@@ -90,11 +92,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
       try {
         // Call API to change password
+        // In real integration, use apiService.changePassword
         await mockAPI.changePassword(email, newPassword);
 
         // On success, clear the action required flag
         setActionRequired(null);
+        setIsVerified(false); // Clear verified status
         localStorage.removeItem("actionRequired");
+
+        // Final step: Force a re-login to get a proper session token with tempPassword: false
+        // In production, we would call apiService.login again here.
+        window.location.reload();
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to change password"
@@ -106,6 +114,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     },
     []
   );
+
   const verifyCode = useCallback(async (email: string, code: string) => {
     setLoading(true);
     setError(null);
@@ -113,11 +122,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Call API to verify code
       const response = await apiService.verifyCode(email, code);
 
-      // Verification successful - check the response to update global state
+      // --- CRITICAL FIX: Update state for the next step ---
       if (response.nextStep === "CHANGE_PASSWORD") {
-        // Update the global state to indicate we're moving to password change
-        setActionRequired("PASSWORD_CHANGE_REQUIRED");
-        localStorage.setItem("actionRequired", "PASSWORD_CHANGE_REQUIRED");
+        // Verification successful - set flag to allow router navigation
+        setIsVerified(true);
       }
 
       return response;
@@ -164,6 +172,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       isUser,
       userId: user?.id ? String(user.id) : undefined,
       actionRequired,
+      isVerified, // <-- EXPOSED FLAG
     }),
     [
       user,
@@ -176,6 +185,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       isAdmin,
       isUser,
       actionRequired,
+      isVerified,
     ]
   );
 

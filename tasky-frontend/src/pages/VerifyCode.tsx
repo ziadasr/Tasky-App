@@ -17,11 +17,14 @@ export const VerifyCode: React.FC<VerifyCodeProps> = ({ onNavigate }) => {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string>("");
   const [message, setMessage] = useState<string>("");
-  const [isVerifying, setIsVerifying] = useState(false); // Guard: If the user is not logged in or action is not PASSWORD_CHANGE_REQUIRED, redirect.
+  const [isVerifying, setIsVerifying] = useState(false);
 
+  // Guard: This check is mainly for safety; the router guard in App.tsx handles the primary redirect.
   if (!user || actionRequired !== "PASSWORD_CHANGE_REQUIRED") {
-    onNavigate("Dashboard" as AppPath);
-    return null;
+    // If user somehow lands here without the actionRequired flag, send them to dashboard.
+    // NOTE: If the user refreshes, they must be sent to the VerifyCode page by the App.tsx guard.
+    // onNavigate("Dashboard" as AppPath);
+    // return null;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,6 +32,14 @@ export const VerifyCode: React.FC<VerifyCodeProps> = ({ onNavigate }) => {
     setError("");
     setMessage("");
     setIsVerifying(true);
+
+    // --- CRITICAL FIX: NULL CHECK FOR USER (Resolves TS error 18047) ---
+    if (!user) {
+      setError("Session expired or user data missing. Please log in again.");
+      setIsVerifying(false);
+      return;
+    }
+    // --- END FIX ---
 
     if (!code || code.trim().length === 0) {
       setError("Please enter the verification code.");
@@ -39,15 +50,19 @@ export const VerifyCode: React.FC<VerifyCodeProps> = ({ onNavigate }) => {
     try {
       // Call API to verify code. This throws on error.
       const result = await verifyCode(user.email, code);
-      console.log("Verification result:", result); // If the promise resolves successfully, show success message:
 
+      // If the promise resolves successfully, the context has updated the isVerified state.
+      // Show success message:
       setMessage(result.message || "✓ Verification successful! Redirecting...");
-      setCode(""); // Navigate ONLY after showing the message. We rely on the App router allowing this path now.
+      setCode("");
+
+      // CRITICAL FIX: Navigate to ChangePassword after delay to display success message
+      // This manual navigation is now PERMITTED by the App.tsx guard because isVerified=true.
       setTimeout(() => {
         onNavigate("ChangePassword" as AppPath);
-      }, 1000); // 1-second delay to ensure message is seen.
+      }, 1000);
     } catch (err) {
-      // Error is set by the catch block
+      // Error is caught and message is set
       const errorMessage =
         err instanceof Error
           ? err.message
@@ -57,35 +72,30 @@ export const VerifyCode: React.FC<VerifyCodeProps> = ({ onNavigate }) => {
     } finally {
       setIsVerifying(false);
     }
-  }; // This simulation assumes the verification code was "sent" to the user's email // after the admin created the account.
+  };
 
-  const userEmail = user.email || "your registered email";
+  const userEmail = user?.email || "your registered email";
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
-           {" "}
       <Card className="max-w-md w-full">
-                {/* Tasky Logo and Heading */}       {" "}
+        {/* Tasky Logo and Heading */}
         <div className="flex flex-col items-center justify-center space-y-1 mb-10">
-                   {" "}
           <h2 className="text-5xl font-extrabold text-indigo-600 tracking-tighter">
-                        Tasky.          {" "}
+            Tasky.
           </h2>
-                 {" "}
         </div>
-                {/* Page Title */}       {" "}
+
+        {/* Page Title */}
         <h3 className="text-2xl font-bold text-center text-gray-800 mb-2">
-                    Verify Your Account        {" "}
+          Verify Your Account
         </h3>
-               {" "}
         <p className="text-center text-sm text-gray-500 mb-6">
-                    We've sent a verification code to <br />         {" "}
-          <span className="font-semibold text-indigo-700">{userEmail}</span>   
-             {" "}
+          We've sent a verification code to <br />
+          <span className="font-semibold text-indigo-700">{userEmail}</span>
         </p>
-               {" "}
+
         <form onSubmit={handleSubmit}>
-                   {" "}
           <Input
             label="Verification Code"
             id="verificationCode"
@@ -96,47 +106,41 @@ export const VerifyCode: React.FC<VerifyCodeProps> = ({ onNavigate }) => {
             required
             autoFocus
           />
-                   {" "}
+
           {error && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
-                            {error}           {" "}
+              {error}
             </div>
           )}
-                   {" "}
+
           {message && (
             <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg text-sm">
-                            {message}           {" "}
+              {message}
             </div>
           )}
-                   {" "}
+
           <Button
             type="submit"
             className="w-full mt-4"
             disabled={isVerifying || loading}
           >
-                       {" "}
-            {isVerifying || loading ? <Spinner /> : "Verify & Continue"}       
-             {" "}
+            {isVerifying || loading ? <Spinner /> : "Verify & Continue"}
           </Button>
-                   {" "}
+
           <Button
             type="button"
             onClick={logout}
             className="w-full mt-3"
             variant="outline"
           >
-                        Sign Out          {" "}
+            Sign Out
           </Button>
-                   {" "}
+
           <p className="mt-6 text-center text-xs text-gray-500">
-                        Check your inbox and spam folder. The code expires in 10
-            minutes.          {" "}
+            Check your inbox and spam folder. The code expires in 10 minutes.
           </p>
-                 {" "}
         </form>
-             {" "}
       </Card>
-         {" "}
     </div>
   );
 };

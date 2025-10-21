@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { LoginPage } from "./pages/Login";
 import { useAuth } from "./context/AuthContext";
-import { Dashboard } from "./pages//Dashboard";
+import { Dashboard } from "./pages/Dashboard";
 import { TaskList } from "./pages/TaskList";
 import { RegisterPage } from "./pages/Register";
 import { TaskFormPage } from "./pages/TaskForm";
@@ -56,7 +56,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         <Spinner />
       </div>
     );
-  if (!user) return <LoginPage />; // Should not happen if AuthProvider is set up correctly, but serves as safety
+  if (!user) return <LoginPage />;
 
   const isAuthorized = allowedRoles.includes(user.role);
 
@@ -90,7 +90,7 @@ const TaskManagerApp: React.FC = () => {
     taskId?: string | null;
     filterStatus?: string | null;
   }>({});
-  const { actionRequired } = useAuth();
+  const { actionRequired, isVerified } = useAuth(); // <-- Added isVerified
 
   const handleNavigate = useCallback(
     (
@@ -110,13 +110,34 @@ const TaskManagerApp: React.FC = () => {
       actionRequired === "PASSWORD_CHANGE_REQUIRED" &&
       currentPath === "Dashboard"
     ) {
-      // Only redirect to VerifyCode if we're currently on Dashboard
+      // Force initial redirect to VerifyCode
       setCurrentPath("VerifyCode");
     }
-    // Otherwise stay on current path (allow manual navigation to ChangePassword after verification)
-  }, [actionRequired]);
+  }, [actionRequired, currentPath]);
 
   const renderPage = useMemo(() => {
+    // --- CRITICAL ROUTER GUARD FIX: Force user to the required action page ---
+    if (actionRequired === "PASSWORD_CHANGE_REQUIRED") {
+      // 1. If verified, force to ChangePassword page
+      if (isVerified) {
+        return (
+          <ProtectedRoute
+            allowedRoles={["Admin", "User", "Employee", "Manager"]}
+          >
+            <ChangePassword onNavigate={handleNavigate} />
+          </ProtectedRoute>
+        );
+      }
+
+      // 2. If action is required but NOT verified, force to VerifyCode page
+      return (
+        <ProtectedRoute allowedRoles={["Admin", "User", "Employee", "Manager"]}>
+          <VerifyCode onNavigate={handleNavigate} />
+        </ProtectedRoute>
+      );
+    }
+    // End Router Guard
+
     switch (currentPath) {
       case "Dashboard":
         return (
@@ -156,6 +177,7 @@ const TaskManagerApp: React.FC = () => {
             <RegisterPage />
           </ProtectedRoute>
         );
+
       case "VerifyCode":
         return (
           <ProtectedRoute
@@ -180,7 +202,13 @@ const TaskManagerApp: React.FC = () => {
           </ProtectedRoute>
         );
     }
-  }, [currentPath, handleNavigate, routeParams.taskId]);
+  }, [
+    currentPath,
+    handleNavigate,
+    routeParams.taskId,
+    actionRequired,
+    isVerified,
+  ]); // Added isVerified dependency
 
   return (
     <TaskProvider>

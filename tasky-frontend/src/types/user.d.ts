@@ -30,6 +30,7 @@ export interface AuthContextType {
   isAdmin: boolean;
   isUser: boolean;
   userId: string | undefined;
+  isVerified: boolean; // <--- ADD THIS LINE
   actionRequired: string | null;
 }
 // Standard error payload from backend
