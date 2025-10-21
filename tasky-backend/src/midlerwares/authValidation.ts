@@ -37,6 +37,42 @@ export const validateRegistration: ValidationChain[] = [
     .withMessage("Direct Manager ID must be a positive integer."),
 ];
 
+// --- Password Complexity Rules ---
+export const validateNewPassword: ValidationChain[] = [
+  // 1. New Password Presence and Length
+  body("newPassword")
+    .exists()
+    .withMessage("New password is required.")
+    .isLength({ min: 10 }) // Enforce a good minimum length
+    .withMessage("Password must be at least 10 characters long."),
+
+  // 2. Character Requirements (Complexity)
+  body("newPassword")
+    .matches(/[A-Z]/) // Must contain at least one uppercase letter
+    .withMessage("Password must contain at least one uppercase letter.")
+    .matches(/[a-z]/) // Must contain at least one lowercase letter
+    .withMessage("Password must contain at least one lowercase letter.")
+    .matches(/[0-9]/) // Must contain at least one number
+    .withMessage("Password must contain at least one number.")
+    .matches(/[!@#$%^&*(),.?":{}|<>]/) // Must contain at least one special character
+    .withMessage(
+      "Password must contain at least one special character (!@#$%...)."
+    ),
+
+  // 3. Password Confirmation Match
+  body("confirmPassword")
+    .exists()
+    .withMessage("Password confirmation is required.")
+    .custom((value, { req }) => {
+      if (value !== req.body.newPassword) {
+        throw new Error(
+          "Password confirmation does not match the new password."
+        );
+      }
+      return true;
+    }),
+];
+
 // 2. Middleware to check results and send errors
 export const validationHandler = (
   req: Request,

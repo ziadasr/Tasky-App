@@ -19,17 +19,33 @@ export const Errors = {
     error:
       "Password must be at least 8 characters and include a number and symbol.",
   },
-  FIELD_REQUIRED: {
+  WRONG_PASSWORD: {
+    status: 401,
+    code: "WRONG_PASSWORD",
+    error: "The password you entered is incorrect.",
+  },
+  INVALID_CREDS: {
+    status: 401,
+    code: "INVALID_CREDENTIALS",
+    error: "Invalid email or password.",
+  },
+  PASSWORD_MISMATCH: {
     status: 400,
-    code: "FIELD_REQUIRED",
-    error: "A required field is missing or empty.",
+    code: "PASSWORD_MISMATCH",
+    error: "The new password and confirmation do not match.",
   },
 
   // --- 409 Conflict Errors ---
+  // Use 409 for resource conflict (unique constraint)
   EMAIL_EXISTS: {
-    status: 409, // Use 409 for resource conflict (unique constraint)
+    status: 409,
     code: "EMAIL_EXISTS",
     error: "An account with this email already exists.",
+  },
+  EMAIL_NOT_REGISTERED: {
+    status: 404,
+    code: "EMAIL_NOT_REGISTERED",
+    error: "The email address is not registered.",
   },
 
   INTERNAL_ERROR: {
@@ -41,5 +57,25 @@ export const Errors = {
     status: 401,
     code: "UNAUTHORIZED",
     error: "You are not authorized to perform this action.",
+  },
+  NOT_LOGGED_IN: {
+    status: 401,
+    code: "NOT_LOGGED_IN",
+    error: "You must be logged in to access this resource.",
+  },
+  INVALID_OR_EXPIRED_TOKEN: {
+    status: 401,
+    code: "INVALID_OR_EXPIRED_TOKEN",
+    error: "Your token is invalid or has expired. Please log in again.",
+  },
+  NOT_AUTH: {
+    status: 403,
+    code: "NOT_AUTHORIZED",
+    error: "You do not have permission to access this resource.",
+  },
+  VERIFICATION_FAILED: {
+    status: 400,
+    code: "VERIFICATION_FAILED",
+    error: "Verification failed. The provided code is incorrect or expired.",
   },
 };

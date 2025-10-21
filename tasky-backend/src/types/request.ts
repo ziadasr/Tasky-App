@@ -1,32 +1,15 @@
 import type { Request } from "express";
-//!(req as any).user?.userId ====> this is disables the typescript error without proper typing
-// Alternative: you can also declare module augmentation (preferable for global use)
-// in that way we don't need to import AuthenticatedRequest every time
-//we dont import request and extend it we are editing the global namespace of express
+import type { TokenPayload } from "../utils/jwtService.js";
+
+/**
+ * Global module augmentation for Express Request
+ * This adds tokenUser property to all Express Request objects globally
+ * No need to import AuthenticatedRequest - works everywhere!
+ */
 declare global {
   namespace Express {
     interface Request {
-      user?: {
-        userId: string;
-        role: string;
-        directManagerId?: string;
-        email?: string;
-        [key: string]: any;
-      };
+      tokenUser?: TokenPayload;
     }
   }
 }
-
-// Extend the Express Request interface to include user data
-// //importing the normal Request interface from express and extending it and add our data
-// //! in that way we should always use AuthenticatedRequest in our controllers where we expect user data
-// //! check the following middleware that adds the user data to the noraml req
-// export interface AuthenticatedRequest extends Request {
-//   user?: {
-//     userId: string;
-//     role: string;
-//     directManagerId?: string;
-//     email?: string;
-//     [key: string]: any;
-//   };
-// }

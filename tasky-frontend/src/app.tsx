@@ -1,10 +1,18 @@
-import React, { useState, useCallback, useMemo, ReactNode } from "react";
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  ReactNode,
+  useEffect,
+} from "react";
 import { LoginPage } from "./pages/Login";
 import { useAuth } from "./context/AuthContext";
 import { Dashboard } from "./pages//Dashboard";
 import { TaskList } from "./pages/TaskList";
 import { RegisterPage } from "./pages/Register";
 import { TaskFormPage } from "./pages/TaskForm";
+import { ChangePassword } from "./pages/ChangePassword";
+import { VerifyCode } from "./pages/VerifyCode";
 import { Layout } from "./components/layout/Layout";
 import { TaskProvider } from "./context/TaskContext";
 import { Spinner, Button } from "./components/common/UIComponents";
@@ -16,7 +24,9 @@ export type AppPath =
   | "TaskList"
   | "AddTask"
   | "EditTask"
-  | "Register";
+  | "Register"
+  | "ChangePassword"
+  | "VerifyCode";
 
 // Navigation function type that all components should use
 export type NavigateFunction = (
@@ -24,6 +34,9 @@ export type NavigateFunction = (
   taskId?: string | null,
   filterStatus?: string | null
 ) => void;
+
+// Alias for backward compatibility
+export type OnNavigateType = NavigateFunction;
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -77,6 +90,7 @@ const TaskManagerApp: React.FC = () => {
     taskId?: string | null;
     filterStatus?: string | null;
   }>({});
+  const { actionRequired } = useAuth();
 
   const handleNavigate = useCallback(
     (
@@ -90,17 +104,33 @@ const TaskManagerApp: React.FC = () => {
     []
   );
 
+  // Auto-redirect based on actionRequired flag - only on initial mount
+  useEffect(() => {
+    if (
+      actionRequired === "PASSWORD_CHANGE_REQUIRED" &&
+      currentPath === "Dashboard"
+    ) {
+      // Only redirect to VerifyCode if we're currently on Dashboard
+      setCurrentPath("VerifyCode");
+    }
+    // Otherwise stay on current path (allow manual navigation to ChangePassword after verification)
+  }, [actionRequired]);
+
   const renderPage = useMemo(() => {
     switch (currentPath) {
       case "Dashboard":
         return (
-          <ProtectedRoute allowedRoles={["Admin", "User"]}>
+          <ProtectedRoute
+            allowedRoles={["Admin", "User", "Employee", "Manager"]}
+          >
             <Dashboard onNavigate={handleNavigate} />
           </ProtectedRoute>
         );
       case "TaskList":
         return (
-          <ProtectedRoute allowedRoles={["Admin", "User"]}>
+          <ProtectedRoute
+            allowedRoles={["Admin", "User", "Employee", "Manager"]}
+          >
             <TaskList onNavigate={handleNavigate} />
           </ProtectedRoute>
         );
@@ -124,6 +154,22 @@ const TaskManagerApp: React.FC = () => {
         return (
           <ProtectedRoute allowedRoles={["Admin"]}>
             <RegisterPage />
+          </ProtectedRoute>
+        );
+      case "VerifyCode":
+        return (
+          <ProtectedRoute
+            allowedRoles={["Admin", "User", "Employee", "Manager"]}
+          >
+            <VerifyCode onNavigate={handleNavigate} />
+          </ProtectedRoute>
+        );
+      case "ChangePassword":
+        return (
+          <ProtectedRoute
+            allowedRoles={["Admin", "User", "Employee", "Manager"]}
+          >
+            <ChangePassword onNavigate={handleNavigate} />
           </ProtectedRoute>
         );
       default:

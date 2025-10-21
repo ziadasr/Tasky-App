@@ -15,7 +15,8 @@ class User extends Model {
   declare lastLogin: Date | null;
   declare department: string;
   declare city: string;
-  declare firstLogin: boolean;
+  declare tempPassword: boolean;
+  declare salary: number;
 }
 
 User.init(
@@ -69,12 +70,16 @@ User.init(
     },
     encryptedVerificationCode: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
-    firstLogin: {
+    tempPassword: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: false,
+      defaultValue: true,
+    },
+    salary: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
     },
   },
   {

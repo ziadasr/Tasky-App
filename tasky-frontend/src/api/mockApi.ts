@@ -5,21 +5,39 @@ import { Task } from "../types/task";
 export const MOCK_USERS: User[] = [
   {
     id: "admin-001",
-    username: "admin@tasky.com",
-    role: "Admin",
     name: "Alice Admin",
+    email: "admin@tasky.com",
+    role: "Admin",
+    department: "Management",
+    phoneNumber: "01001234567",
+    city: "Cairo",
+    dateOfBirth: "1990-05-15",
+    salary: 50000,
+    directManagerId: 0,
   },
   {
     id: "user-001",
-    username: "user1@tasky.com",
-    role: "User",
     name: "Bob User",
+    email: "user1@tasky.com",
+    role: "User",
+    department: "Development",
+    phoneNumber: "01001234568",
+    city: "Cairo",
+    dateOfBirth: "1995-08-20",
+    salary: 30000,
+    directManagerId: 1,
   },
   {
     id: "user-002",
-    username: "user2@tasky.com",
-    role: "User",
     name: "Charlie User",
+    email: "user2@tasky.com",
+    role: "User",
+    department: "Design",
+    phoneNumber: "01001234569",
+    city: "Alex",
+    dateOfBirth: "1992-03-10",
+    salary: 28000,
+    directManagerId: 1,
   },
 ];
 
@@ -78,28 +96,35 @@ export const mockAPI = {
   },
 
   // Simulates user registration (Admin only)
-  registerUser: async (name: string, username: string): Promise<User> => {
+  registerUser: async (name: string, email: string): Promise<User> => {
     await delay(300);
-    const existingUser = MOCK_USERS.find((u) => u.username === username);
+    const existingUser = MOCK_USERS.find((u) => u.email === email);
     if (existingUser) {
-      throw new Error("Username already exists.");
+      throw new Error("Email already exists.");
     }
     const newUser: User = {
-      id: crypto.randomUUID(),
-      username,
+      id: crypto.randomUUID() as any,
       name,
+      email,
       role: "User" as UserRole,
+      department: "",
+      phoneNumber: "",
+      city: "",
+      dateOfBirth: "",
+      salary: 0,
+      directManagerId: 0,
     };
     MOCK_USERS.push(newUser);
     return newUser;
   },
 
   // Simulates user login
-  login: async (username: string, password: string): Promise<User> => {
+  login: async (email: string, password: string): Promise<User> => {
     await delay(300);
-    const user = MOCK_USERS.find((u) => u.username === username);
+    const user = MOCK_USERS.find((u) => u.email === email);
     if (user && password === "password") {
       // Mock password check
+      // Return user with tempPassword flag (true = first login)
       return user;
     }
     throw new Error("Invalid credentials");
@@ -131,5 +156,33 @@ export const mockAPI = {
   fetchAllUsers: async (): Promise<User[]> => {
     await delay(200);
     return MOCK_USERS.filter((u) => u.role === "User");
+  },
+
+  // Simulates verifying the code sent to user's email
+  verifyCode: async (email: string, code: string): Promise<void> => {
+    await delay(300);
+    const user = MOCK_USERS.find((u) => u.email === email);
+    if (!user) {
+      throw new Error("User not found");
+    }
+    // In mock, any non-empty code is accepted
+    if (!code || code.length === 0) {
+      throw new Error("Invalid verification code");
+    }
+    // Code verified - no need to update state here (backend handles it)
+  },
+
+  // Simulates changing password on first login
+  changePassword: async (email: string, newPassword: string): Promise<void> => {
+    await delay(300);
+    const user = MOCK_USERS.find((u) => u.email === email);
+    if (!user) {
+      throw new Error("User not found");
+    }
+    if (newPassword.length < 8) {
+      throw new Error("Password must be at least 8 characters");
+    }
+    // In real backend, this would update the user's password
+    // and the backend would no longer return PASSWORD_CHANGE_REQUIRED on next login
   },
 };

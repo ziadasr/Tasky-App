@@ -54,7 +54,7 @@ export const TaskFormPage: React.FC<TaskFormProps> = ({
       // Set default assignment to self for Admin when adding, if no other users are available
       setFormData((prev) => ({
         ...prev,
-        assignedToId: availableUsers[0]?.id || user?.id || "",
+        assignedToId: String(availableUsers[0]?.id || user?.id || ""),
         status: TASK_STATUSES[0],
       }));
     }
@@ -94,8 +94,8 @@ export const TaskFormPage: React.FC<TaskFormProps> = ({
   };
 
   const userOptions = availableUsers.map((u) => ({
-    value: u.id,
-    label: `${u.name} (${u.username})`,
+    value: String(u.id),
+    label: `${u.name} (${u.email})`,
   }));
 
   const statusOptions = TASK_STATUSES.map((s) => ({ value: s, label: s }));

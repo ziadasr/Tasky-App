@@ -9,18 +9,20 @@ import {
 
 export const LoginPage: React.FC = () => {
   const { login, loading, error } = useAuth();
-  const [username, setUsername] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("password");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !password.trim()) {
-      // Use a custom message box instead of alert in production, but keeping the simple check here
-      console.warn("Please enter both username and password.");
+    if (!email.trim() || !password.trim()) {
+      console.warn("Please enter both email and password.");
       return;
     }
-    // login function handles state change and routing via AuthProvider/App.tsx
-    await login(username, password);
+    const success = await login(email, password);
+    // If login fails, clear only the password, keep the email for retry
+    if (!success) {
+      setPassword("");
+    }
   };
 
   return (
@@ -35,17 +37,17 @@ export const LoginPage: React.FC = () => {
         </div>
 
         <p className="text-center text-sm text-gray-500 mb-6">
-          Use mock user: `admin@tasky.com` or `user1@tasky.com`. Password:
-          `password`.
+          Use mock user: `ziad@taskyapp.com` or `user1@tasky.com`. Password:
+          `Ziadassar@1`.
         </p>
         <form onSubmit={handleSubmit}>
           <Input
             label="Email Address"
-            id="username"
+            id="email"
             type="email"
             placeholder="e.g., admin@tasky.com"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
           <Input

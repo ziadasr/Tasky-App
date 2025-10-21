@@ -8,7 +8,13 @@ import bcrypt from "bcrypt";
 import { createHash } from "crypto";
 import type { Transaction } from "sequelize";
 import { sendEmail } from "../utils/emailService.js";
-import { generateWelcomeEmail } from "../templates/emailTemplates.js";
+import { issueResetToken, issueToken } from "../utils/jwtService.js";
+import {
+  generateWelcomeEmail,
+  generateVerificationCodeEmail,
+} from "../templates/emailTemplates.js";
+import { error } from "console";
+//in the bottom of the file u will find the expected req of each middleware
 
 const registrationContbyAdmin = async (req: Request, res: Response) => {
   //the pass is constant and set by user at the first login so not includded in the req
@@ -37,20 +43,18 @@ const registrationContbyAdmin = async (req: Request, res: Response) => {
 
     // Verify that directManagerId refers to an existing admin
     const manager = await User.findByPk(directManagerId, { transaction });
-    console.log("Manager found:", manager);
-    console.log("Manager role:", manager?.role);
-    console.log("Manager role type:", typeof manager?.role);
-
     if (!manager) {
+      //incase the manager id is invalid
       return res.status(Errors.UNAUTHORIZED.status).json({
         error: "Manager not found",
         code: Errors.UNAUTHORIZED.code,
       });
     }
 
-    if (manager.role !== "admin") {
+    //incase that the id doesnt points to a manager or admin
+    if (manager.role !== "Manager") {
       console.log(
-        "Manager role check failed. Expected 'admin', got:",
+        "Manager role check failed. Expected 'Manager', got:",
         manager.role
       );
       return res.status(Errors.UNAUTHORIZED.status).json({
@@ -58,10 +62,12 @@ const registrationContbyAdmin = async (req: Request, res: Response) => {
         code: Errors.UNAUTHORIZED.code,
       });
     }
+    //check if that email already exists
     const existingUser = await User.findOne({
       where: { email: email.toLowerCase() },
       transaction: transaction,
     });
+    //if the email exists return error
     if (existingUser) {
       return res.status(Errors.EMAIL_EXISTS.status).json({
         error: Errors.EMAIL_EXISTS.error,
@@ -83,6 +89,7 @@ const registrationContbyAdmin = async (req: Request, res: Response) => {
       .digest("hex");
     const encryptedVerificationCode = bcrypt.hashSync(verificationCodeSha, 10);
 
+    // add the new user to the database
     await User.create(
       {
         name: name,
@@ -95,7 +102,7 @@ const registrationContbyAdmin = async (req: Request, res: Response) => {
         city: city,
         role: role,
         directManagerId: directManagerId,
-        firstLogin: true, // User hasn't logged in yet
+        tempPassword: true, // User hasn't logged in yet
         lastLogin: null, // No login yet
       },
       { transaction: transaction }
@@ -116,6 +123,7 @@ const registrationContbyAdmin = async (req: Request, res: Response) => {
     // Send email to newly created employee
     const employeeEmail = email;
 
+    // Send welcome email
     try {
       if (employeeEmail) {
         await sendEmail({
@@ -135,7 +143,7 @@ const registrationContbyAdmin = async (req: Request, res: Response) => {
 
     await transaction.commit();
 
-    return res.status(200).json({
+    return res.status(Messages.USER_REGISTERED.status).json({
       message: Messages.USER_REGISTERED.message,
       code: Messages.USER_REGISTERED.code,
       note: "User registered with default password 'TempPassword' - must be changed on first login",
@@ -152,138 +160,242 @@ const registrationContbyAdmin = async (req: Request, res: Response) => {
   }
 };
 
-// // Verification Controller
-// const verifyCont = async (req: Request, res: Response) => {
-//   try {
-//     const { email, code } = req.body; // code is SHA256 hashed from frontend
+// Login Controller
 
-//     const user = await User.findOne({
-//       where: { email: email.toLowerCase() },
-//     });
+const loginCont = async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+  const now = new Date();
+  const tokenExpirationMs = 2 * 60 * 60 * 1000; // 2 hours
+  //check the user existance
+  try {
+    const user = await User.findOne({
+      where: { email: email.toLowerCase() },
+    });
+    const passwordFromDB = user?.password;
+    // Compare SHA256-hashed password with bcrypt hash in DB
+    const isMatch = passwordFromDB
+      ? await bcrypt.compare(password, passwordFromDB)
+      : false;
 
-//     const verification_token = user?.EncryptedVerificationCode;
+    // if user not found or wrong password
+    if (!user || !isMatch) {
+      return res.status(Errors.INVALID_CREDS.status).json({
+        error: Errors.INVALID_CREDS.error,
+        code: Errors.INVALID_CREDS.code,
+      });
+    }
 
-//     if (!verification_token) {
-//       return res.status(Errors.INVALID_EMAIL.status).json({
-//         error: Errors.INVALID_EMAIL.message,
-//         code: Errors.INVALID_EMAIL.code,
-//       });
-//     }
+    // if user is registered and not the first login
+    // no need for  (user?.firstLogin) because user existence already checked
+    if (isMatch && user.tempPassword === false) {
+      await User.update({ lastLogin: now }, { where: { id: user.id } });
+      res.clearCookie("token");
+      const token = issueToken({
+        userId: user.id,
+        role: user.role,
+        directManagerId: user.directManagerId,
+      });
+      res.cookie("reset_auth_token", token, {
+        httpOnly: true, // JS can't read this cookie
+        //secure: process.env.NODE_ENV === "production", // only HTTPS in prod
+        secure: false, // for development over HTTP
+        sameSite: "strict", // CSRF protection
+        maxAge: tokenExpirationMs, // 2 hours
+      });
 
-//     const codeSha = code;
-//     const ismatch = await bcrypt.compare(codeSha, verification_token);
+      return res.status(Messages.LOGIN_SUCCESS.status).json({
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          // Include all profile data needed by the frontend User type
+          dateOfBirth: user.dateOfBirth,
+          department: user.department,
+          city: user.city,
+          salary: user.salary,
+          phoneNumber: user.phoneNumber,
+          directManagerId: user.directManagerId,
+          tempPassword: user.tempPassword, // Indicates password change required
+        },
+        message: Messages.LOGIN_SUCCESS.message,
+        role: user.role,
+      });
+    }
 
-//     if (ismatch) {
-//       await User.update(
-//         { isVerified: true },
-//         { where: { email: email.toLowerCase() } }
-//       );
-//       return res.status(200).json({
-//         message: Messages.EMAIL_VERIFIED.message,
-//         code: Messages.EMAIL_VERIFIED.code,
-//       });
-//     } else {
-//       console.error(
-//         "Verification failed: Code does not match.",
-//         code,
-//         verification_token
-//       );
-//       return res.status(Errors.VERIFICATION_FAILED.status).json({
-//         error: Errors.VERIFICATION_FAILED.message,
-//         code: Errors.VERIFICATION_FAILED.code,
-//       });
-//     }
-//   } catch (err) {
-//     console.error("Verification error:", err);
-//     return res.status(Errors.INTERNAL_ERROR.status).json({
-//       error: Errors.INTERNAL_ERROR.message,
-//       code: Errors.INTERNAL_ERROR.code,
-//     });
-//   }
-// };
+    // user exists and first login changing password is required
+    else if (isMatch && user.tempPassword === true) {
+      //generate th vf code and send it to the user email
+      const verificationCode = Math.floor(
+        100000 + Math.random() * 900000
+      ).toString();
+      const SALT_ROUNDS = 10;
 
-// // Login Controller
-// const loginCont = async (req: Request, res: Response) => {
-//   try {
-//     const { email, password } = req.body; // password is SHA256 hashed from frontend
+      // Hash the code with SHA256 first, then bcrypt (to match registration)
+      const verificationCodeSha = createHash("sha256")
+        .update(verificationCode)
+        .digest("hex");
+      const encryptedVerificationCode = await bcrypt.hash(
+        verificationCodeSha,
+        SALT_ROUNDS
+      );
 
-//     const user = await User.findOne({
-//       where: { email: email.toLowerCase() },
-//     });
+      await User.update(
+        { encryptedVerificationCode: encryptedVerificationCode },
+        { where: { email: email.toLowerCase() } }
+      );
+      const emailTemplate = generateVerificationCodeEmail({
+        name: user.name,
+        verificationCode: verificationCode,
+      });
+      await sendEmail({
+        to: email,
+        subject: emailTemplate.subject,
+        text: emailTemplate.text,
+        html: emailTemplate.html,
+      });
 
-//     const passwordFromDB = user?.password;
+      return res.status(Messages.ACTION_REQUIRED.status).json({
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          // Include all profile data needed by the frontend User type
+          dateOfBirth: user.dateOfBirth,
+          department: user.department,
+          city: user.city,
+          salary: user.salary,
+          phoneNumber: user.phoneNumber,
+          directManagerId: user.directManagerId,
+          tempPassword: user.tempPassword, // Indicates password change required
+        },
+        message: Messages.ACTION_REQUIRED.message,
+        code: Messages.ACTION_REQUIRED.code,
+        nextStep: Messages.ACTION_REQUIRED.nextStep,
+      });
+    } else {
+      return res.status(Errors.INVALID_CREDS.status).json({
+        error: Errors.INVALID_CREDS.error,
+        code: Errors.INVALID_CREDS.code,
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(Errors.INTERNAL_ERROR.status).json({
+      error: Errors.INTERNAL_ERROR.error,
+      code: Errors.INTERNAL_ERROR.code,
+    });
+  }
+};
 
-//     // if user not found
-//     if (!passwordFromDB) {
-//       return res.status(Errors.EMAIL_NOT_REGISTERED.status).json({
-//         error: Errors.EMAIL_NOT_REGISTERED.message,
-//         code: Errors.EMAIL_NOT_REGISTERED.code,
-//       });
-//     }
+/// Verification Controller
+export const verifyCont = async (req: Request, res: Response) => {
+  const { email, code } = req.body;
+  const tokenExpirationMs = 2 * 60 * 60 * 1000; // 2 hours
+  try {
+    const user = await User.findOne({
+      where: { email: email.toLowerCase() },
 
-//     // Compare SHA256-hashed password with bcrypt hash in DB
-//     const isMatch = await bcrypt.compare(password, passwordFromDB);
+      attributes: ["id", "encryptedVerificationCode", "tempPassword"], // Fetch only required fields
+    });
 
-//     // user exists and account is verified
-//     if (isMatch && user?.isVerified) {
-//       const token = jwtController.issueToken({
-//         userId: user.id,
-//         role: "customer",
-//       });
-//       console.log("Generated JWT:", token);
+    //Check if user exists or is already verified (Generic Security Response)
+    if (!user || user.tempPassword === false) {
+      return res.status(Errors.VERIFICATION_FAILED.status).json({
+        error: Errors.VERIFICATION_FAILED.error,
+        code: Errors.VERIFICATION_FAILED.code,
+      });
+    }
 
-//       res.cookie("token", token, {
-//         httpOnly: true, // JS can't read this cookie
-//         //secure: process.env.NODE_ENV === "production", // only HTTPS in prod
-//         secure: false, // for development over HTTP
-//         sameSite: "strict", // CSRF protection
-//         maxAge: 2 * 60 * 60 * 1000, // 2 hours
-//       });
+    const verificationHash = user.encryptedVerificationCode;
 
-//       return res.status(200).json({ message: Messages.LOGIN_SUCCESS.message });
-//     }
+    // Check if a code hash is actually present (it might have expired or been cleared)
+    if (!verificationHash) {
+      return res.status(Errors.VERIFICATION_FAILED.status).json({
+        error: Errors.VERIFICATION_FAILED.error,
+        code: Errors.VERIFICATION_FAILED.code,
+      });
+    }
 
-//     // user exists but not verified
-//     else if (isMatch && !user?.isVerified) {
-//       const verificationCode = Math.floor(
-//         100000 + Math.random() * 900000
-//       ).toString();
-//       const verificationCodeSha = require("crypto")
-//         .createHash("sha256")
-//         .update(verificationCode)
-//         .digest("hex");
-//       const encryptedVerificationCode = bcrypt.hashSync(
-//         verificationCodeSha,
-//         10
-//       );
-//       await User.update(
-//         { EncryptedVerificationCode: encryptedVerificationCode },
-//         { where: { email: email.toLowerCase() } }
-//       );
-//       await sendEmail(
-//         email,
-//         "TechShop Account Verification",
-//         `Hello ${user.name},\nYour new verification code is: ${verificationCode}\nPlease use this code to verify your account.\n\nBest regards,\nThe TechShop Team`
-//       );
+    // SECURE HASH COMPARISON
+    // Hash the incoming code with SHA256 first (to match how it was stored)
+    const incomingCodeSha = createHash("sha256").update(code).digest("hex");
+    const isMatch = await bcrypt.compare(incomingCodeSha, verificationHash);
 
-//       return res.status(Errors.EMAIL_NOT_VERIFIED.status).json({
-//         error: Errors.EMAIL_NOT_VERIFIED.message,
-//         code: Errors.EMAIL_NOT_VERIFIED.code,
-//       });
-//     } else {
-//       return res.status(Errors.WRONG_PASSWORD.status).json({
-//         error: Errors.WRONG_PASSWORD.message,
-//         code: Errors.WRONG_PASSWORD.code,
-//       });
-//     }
-//   } catch (err) {
-//     console.error(err);
-//     res.status(Errors.INTERNAL_ERROR.status).json({
-//       error: Errors.INTERNAL_ERROR.message,
-//       code: Errors.INTERNAL_ERROR.code,
-//     });
-//   }
-// };
+    if (isMatch) {
+      await user.update({
+        encryptedVerificationCode: null, // CLEAR HASH for security
+      });
+      const token = issueResetToken({
+        userId: user.id,
+        email: email.toLowerCase(),
+      });
+      res.cookie("reset_auth_token", token, {
+        httpOnly: true, // JS can't read this cookie
+        //secure: process.env.NODE_ENV === "production", // only HTTPS in prod
+        secure: false, // for development over HTTP
+        sameSite: "strict", // CSRF protection
+        maxAge: tokenExpirationMs, //  hours
+      });
+
+      return res.status(Messages.VERIFICATION_SUCCESS.status).json({
+        message: Messages.VERIFICATION_SUCCESS.message,
+        code: Messages.VERIFICATION_SUCCESS.code,
+        nextStep: Messages.VERIFICATION_SUCCESS.nextStep,
+      });
+    } else {
+      // FAILURE: Log and return specific error
+      console.warn(`Verification failed for ${email}: Code mismatch.`);
+      return res.status(Errors.VERIFICATION_FAILED.status).json({
+        error: Errors.VERIFICATION_FAILED.error,
+        code: Errors.VERIFICATION_FAILED.code,
+      });
+    }
+  } catch (err) {
+    console.error("Verification error:", err);
+    return res.status(Errors.INTERNAL_ERROR.status).json({
+      error: Errors.INTERNAL_ERROR.error,
+      code: Errors.INTERNAL_ERROR.code,
+    });
+  }
+};
+
+// Change Password Controller
+const changePasswordCont = async (req: Request, res: Response) => {
+  const { email, newPassword, confirmPassword } = req.body;
+  if (newPassword !== confirmPassword) {
+    return res.status(Errors.PASSWORD_MISMATCH.status).json({
+      error: Errors.PASSWORD_MISMATCH.error,
+      code: Errors.PASSWORD_MISMATCH.code,
+    });
+  }
+  try {
+    const user = await User.findOne({ where: { email: email.toLowerCase() } });
+    if (!user) {
+      return res.status(Errors.EMAIL_NOT_REGISTERED.status).json({
+        error: Errors.EMAIL_NOT_REGISTERED.error,
+        code: Errors.EMAIL_NOT_REGISTERED.code,
+      });
+    } else {
+      const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+      await User.update(
+        { password: hashedNewPassword, tempPassword: false },
+        { where: { id: user.id } }
+      );
+      return res.status(Messages.PASSWORD_CHANGED.status).json({
+        message: Messages.PASSWORD_CHANGED.message,
+        code: Messages.PASSWORD_CHANGED.code,
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(Errors.INTERNAL_ERROR.status).json({
+      error: Errors.INTERNAL_ERROR.error,
+      code: Errors.INTERNAL_ERROR.code,
+    });
+  }
+};
 
 // // Forgot Password Controller
 // const forgotPasswordCont = async (req: Request, res: Response) => {
@@ -492,12 +604,29 @@ const registrationContbyAdmin = async (req: Request, res: Response) => {
 
 export default {
   registrationContbyAdmin,
-  //   verifyCont,
-  //   loginCont,
+  loginCont,
+  verifyCont,
+  changePasswordCont,
+
   //   forgotPasswordCont,
-  //   changePasswordCont,
   //   getUserInfo,
   //   getUserAddresses,
   //   addaddressCont,
   //   authStatus,
 };
+
+/**
+ * Expected Request Body for registrationContbyAdmin:
+
+    {
+    "name": "Alex Johnson",
+    "email": "alex.johnson@taskyapp.com",
+    "dateOfBirth": "1995-08-15",         
+    "phoneNumber": "01001234567",         
+    "city": "Cairo",
+    "department": "Development",
+    "role": "manager",
+    "directManagerId": 1  
+    }
+
+ */

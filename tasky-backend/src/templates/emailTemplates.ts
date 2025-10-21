@@ -243,7 +243,7 @@ The Tasky Team`,
           <p class="welcome-subheader">Your account is ready to use</p>
           
           <p class="content">
-            We're excited to have you join the Tasky team! Your account has been successfully created and you're ready to start managing tasks efficiently and collaborating with your team.
+            We're excited to have you join the Tasky team! Your account has been successfully created and you're ready to start working efficiently and collaborating with your team.
           </p>
           
           <div class="section-title">🎯 Getting Started - Quick Steps</div>
@@ -331,6 +331,186 @@ The Tasky Team`,
             <strong>The Tasky Team</strong><br>
             <br>
             <small>This is an automated message. Please do not reply to this email.</small>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+  };
+};
+
+// Interface for verification code email
+interface VerificationCodeEmailData {
+  name: string;
+  verificationCode: string;
+}
+
+export const generateVerificationCodeEmail = ({
+  name,
+  verificationCode,
+}: VerificationCodeEmailData) => {
+  return {
+    subject: "Your Tasky Verification Code 🔐",
+    text: `Hello ${name},
+
+Your verification code is: ${verificationCode}
+
+This code is valid for 10 minutes. Please use this code to complete your action.
+
+If you didn't request this code, please ignore this email.
+
+Best regards,
+The Tasky Team`,
+    html: `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Tasky - Verification Code</title>
+        <style>
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+            line-height: 1.6; 
+            color: #374151; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f3f4f6; 
+          }
+          .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background-color: #ffffff; 
+            padding: 40px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); 
+          }
+          .logo { 
+            text-align: center; 
+            margin-bottom: 30px; 
+          }
+          .logo h1 { 
+            font-size: 48px; 
+            font-weight: 800; 
+            color: #4f46e5; 
+            letter-spacing: -0.05em; 
+            margin: 0; 
+            font-family: inherit; 
+          }
+          .greeting { 
+            font-size: 20px; 
+            font-weight: 600; 
+            color: #1f2937; 
+            margin: 20px 0 10px 0; 
+          }
+          .content { 
+            font-size: 16px; 
+            line-height: 1.7; 
+            margin: 20px 0; 
+            color: #374151;
+          }
+          .verification-section { 
+            text-align: center;
+            margin: 40px 0; 
+          }
+          .verification-label { 
+            font-size: 14px; 
+            font-weight: 600; 
+            color: #6b7280; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+            margin-bottom: 15px;
+          }
+          .verification-code { 
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white; 
+            font-size: 40px; 
+            font-weight: 800; 
+            letter-spacing: 8px; 
+            padding: 30px 20px; 
+            border-radius: 12px; 
+            font-family: 'Monaco', 'Courier New', monospace; 
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+          }
+          .code-expiry { 
+            background-color: #fef3c7; 
+            color: #92400e; 
+            padding: 15px; 
+            border-radius: 8px; 
+            border-left: 4px solid #f59e0b; 
+            margin: 20px 0; 
+            font-weight: 500; 
+            font-size: 14px;
+          }
+          .security-notice { 
+            background-color: #fee2e2; 
+            color: #7f1d1d; 
+            padding: 15px; 
+            border-radius: 8px; 
+            border-left: 4px solid #dc2626; 
+            margin: 20px 0; 
+            font-size: 14px;
+          }
+          .security-notice strong {
+            display: block;
+            margin-bottom: 5px;
+          }
+          .divider { 
+            height: 1px; 
+            background-color: #e5e7eb; 
+            margin: 30px 0; 
+          }
+          .footer { 
+            margin-top: 40px; 
+            padding-top: 20px; 
+            border-top: 1px solid #e5e7eb; 
+            color: #6b7280; 
+            font-size: 13px; 
+            text-align: center; 
+          }
+          .footer-text {
+            margin: 5px 0;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="logo">
+            <h1>Tasky.</h1>
+          </div>
+          
+          <p class="greeting">Hello ${name},</p>
+          
+          <p class="content">
+            We've received a request to verify your identity. Please use the verification code below to complete this action.
+          </p>
+          
+          <div class="verification-section">
+            <div class="verification-label">🔐 Your Verification Code</div>
+            <div class="verification-code">${verificationCode}</div>
+          </div>
+
+          <div class="security-notice">
+            <strong>⚠️ Security Notice:</strong>
+            Never share this code with anyone. Tasky support will never ask you for your verification code.
+          </div>
+
+          <p class="content">
+            If you didn't request this verification code, you can safely ignore this email. Your account remains secure.
+          </p>
+
+          <div class="divider"></div>
+
+          <p class="content" style="font-size: 14px; color: #6b7280;">
+            Need help? Contact our support team if you have any questions.
+          </p>
+          
+          <div class="footer">
+            <div class="footer-text">Best regards,</div>
+            <div class="footer-text"><strong>The Tasky Team</strong></div>
+            <br>
+            <div class="footer-text"><small>This is an automated message. Please do not reply to this email.</small></div>
           </div>
         </div>
       </body>

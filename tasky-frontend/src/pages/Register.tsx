@@ -14,13 +14,13 @@ interface Message {
 
 export const RegisterPage: React.FC = () => {
   const [name, setName] = useState<string>("");
-  const [username, setUsername] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<Message | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !username) {
+    if (!name || !email) {
       setMessage({ type: "error", text: "Please fill in all fields." });
       return;
     }
@@ -28,13 +28,13 @@ export const RegisterPage: React.FC = () => {
     setLoading(true);
     setMessage(null);
     try {
-      const newUser = await mockAPI.registerUser(name, username);
+      const newUser = await mockAPI.registerUser(name, email);
       setMessage({
         type: "success",
-        text: `User "${newUser.name}" created successfully with username: ${newUser.username}`,
+        text: `User "${newUser.name}" created successfully with email: ${newUser.email}`,
       });
       setName("");
-      setUsername("");
+      setEmail("");
     } catch (error) {
       setMessage({
         type: "error",
@@ -64,12 +64,12 @@ export const RegisterPage: React.FC = () => {
             required
           />
           <Input
-            label="Email (Username)"
-            id="regUsername"
+            label="Email Address"
+            id="regEmail"
             type="email"
             placeholder="user@example.com"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
           <p className="text-sm text-gray-500 mb-4 italic">

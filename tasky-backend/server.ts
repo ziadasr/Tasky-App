@@ -7,6 +7,7 @@ import express from "express";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import sequelize from "./src/utils/sequelize.js";
 
@@ -25,8 +26,16 @@ const PORT = process.env.PORT || 5000;
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173", // Frontend URL (Vite default)
+    credentials: true, // Allow credentials (cookies, auth headers)
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 app.use(express.json());
+app.use(cookieParser()); // Add cookie parser middleware
 app.use(express.static(join(__dirname, "public")));
 app.use(express.urlencoded({ extended: true }));
 

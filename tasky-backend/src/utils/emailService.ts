@@ -30,7 +30,10 @@ export const sendEmail = async ({ to, subject, text, html }: MailParams) => {
   };
 
   try {
-    const response = await mailtrapApi.post("/api/send", mailPayload);
+    const response = await mailtrapApi.post(
+      `/api/send/${process.env.MAILTRAP_INBOX_ID}`,
+      mailPayload
+    );
     console.log(
       `✅ Email sent successfully. ID: ${response.data.message_ids[0]}`
     );
