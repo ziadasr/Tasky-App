@@ -115,8 +115,21 @@ const TaskManagerApp: React.FC = () => {
     }
   }, [actionRequired, currentPath]);
 
+  // Auto-navigate to ChangePassword when verified (only if still on VerifyCode)
+  useEffect(() => {
+    if (
+      actionRequired === "PASSWORD_CHANGE_REQUIRED" &&
+      isVerified &&
+      currentPath === "VerifyCode"
+    ) {
+      console.log("Auto-navigating to ChangePassword due to isVerified flag");
+      setCurrentPath("ChangePassword");
+    }
+  }, [isVerified, actionRequired]);
+
   const renderPage = useMemo(() => {
     // --- CRITICAL ROUTER GUARD FIX: Force user to the required action page ---
+    // BUT: Only force navigation if isVerified changes, don't remount VerifyCode unnecessarily
     if (actionRequired === "PASSWORD_CHANGE_REQUIRED") {
       // 1. If verified, force to ChangePassword page
       if (isVerified) {
@@ -129,7 +142,7 @@ const TaskManagerApp: React.FC = () => {
         );
       }
 
-      // 2. If action is required but NOT verified, force to VerifyCode page
+      // 2. If action is required but NOT verified, show VerifyCode page
       return (
         <ProtectedRoute allowedRoles={["Admin", "User", "Employee", "Manager"]}>
           <VerifyCode onNavigate={handleNavigate} />
@@ -208,7 +221,7 @@ const TaskManagerApp: React.FC = () => {
     routeParams.taskId,
     actionRequired,
     isVerified,
-  ]); // Added isVerified dependency
+  ]);
 
   return (
     <TaskProvider>

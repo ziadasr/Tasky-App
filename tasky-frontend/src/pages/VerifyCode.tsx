@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import {
   Card,
@@ -13,11 +13,29 @@ interface VerifyCodeProps {
 }
 
 export const VerifyCode: React.FC<VerifyCodeProps> = ({ onNavigate }) => {
-  const { user, verifyCode, logout, loading, actionRequired } = useAuth();
+  const {
+    user,
+    verifyCode,
+    logout,
+    loading,
+    actionRequired,
+    isVerified,
+    error: contextError,
+  } = useAuth();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string>("");
   const [message, setMessage] = useState<string>("");
   const [isVerifying, setIsVerifying] = useState(false);
+
+  // --- CRITICAL: On page load, if already verified, redirect immediately ---
+  useEffect(() => {
+    if (isVerified && actionRequired === "PASSWORD_CHANGE_REQUIRED") {
+      console.log(
+        "✅ Already verified on mount, redirecting to ChangePassword"
+      );
+      onNavigate("ChangePassword" as AppPath);
+    }
+  }, [isVerified, actionRequired, onNavigate]);
 
   // Guard: This check is mainly for safety; the router guard in App.tsx handles the primary redirect.
   if (!user || actionRequired !== "PASSWORD_CHANGE_REQUIRED") {
@@ -27,50 +45,79 @@ export const VerifyCode: React.FC<VerifyCodeProps> = ({ onNavigate }) => {
     // return null;
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError("");
+    console.log("🔍 Form submitted with code:", code);
+
+    // Reset UI before attempting verification
     setMessage("");
+    setError("");
     setIsVerifying(true);
 
-    // --- CRITICAL FIX: NULL CHECK FOR USER (Resolves TS error 18047) ---
+    // --- CRITICAL: NULL CHECK FOR USER ---
     if (!user) {
-      setError("Session expired or user data missing. Please log in again.");
+      const errorMsg =
+        "Session expired or user data missing. Please log in again.";
+      setError(errorMsg);
       setIsVerifying(false);
+      console.error("❌", errorMsg);
       return;
     }
-    // --- END FIX ---
+    // --- END CHECK ---
 
+    // Validate code input
     if (!code || code.trim().length === 0) {
-      setError("Please enter the verification code.");
+      const errorMsg = "Please enter the verification code.";
+      setError(errorMsg);
       setIsVerifying(false);
+      console.warn("⚠️", errorMsg);
       return;
     }
 
     try {
-      // Call API to verify code. This throws on error.
+      // Call API to verify code - this will throw on error
+      console.log("📧 Calling verifyCode API with email:", user.email);
       const result = await verifyCode(user.email, code);
 
-      // If the promise resolves successfully, the context has updated the isVerified state.
-      // Show success message:
-      setMessage(result.message || "✓ Verification successful! Redirecting...");
-      setCode("");
+      // Backend response received - only show success if response is valid
+      if (result && result.nextStep === "CHANGE_PASSWORD") {
+        const successMsg =
+          result.message || "✓ Verification successful! Redirecting...";
+        setMessage(successMsg);
+        setCode(""); // Clear the input field
+        console.log("✅ Verification successful:", result);
 
-      // CRITICAL FIX: Navigate to ChangePassword after delay to display success message
-      // This manual navigation is now PERMITTED by the App.tsx guard because isVerified=true.
-      setTimeout(() => {
-        onNavigate("ChangePassword" as AppPath);
-      }, 1000);
+        // Wait a bit to let user see success message, then redirect
+        setTimeout(() => {
+          console.log("➡️ Navigating to ChangePassword page");
+          onNavigate("ChangePassword" as AppPath);
+        }, 1500);
+      } else {
+        // Unexpected response format
+        const errorMsg = "Unexpected server response. Please try again.";
+        setError(errorMsg);
+        console.error("❌ Invalid response format:", result);
+      }
     } catch (err) {
-      // Error is caught and message is set
+      // Error from API or verification logic
+      console.error("❌ Verification failed:", err);
       const errorMessage =
         err instanceof Error
           ? err.message
           : "Invalid code or connection error. Please try again.";
 
       setError(errorMessage);
+      // Keep code in input so user can retry without retyping
     } finally {
       setIsVerifying(false);
+    }
+  };
+
+  // Handle Enter key directly on input (backup for form submission)
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !isVerifying && code.trim().length > 0) {
+      console.log("Enter key pressed");
+      e.currentTarget.form?.requestSubmit();
     }
   };
 
@@ -103,19 +150,22 @@ export const VerifyCode: React.FC<VerifyCodeProps> = ({ onNavigate }) => {
             placeholder="Enter 6-digit code"
             value={code}
             onChange={(e) => setCode(e.target.value)}
+            onKeyPress={handleKeyPress}
             required
             autoFocus
           />
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
-              {error}
+          {(error || contextError) && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm flex items-start gap-2">
+              <span className="font-bold">✕</span>
+              <span>{error || contextError}</span>
             </div>
           )}
 
           {message && (
-            <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg text-sm">
-              {message}
+            <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg text-sm flex items-start gap-2">
+              <span className="font-bold">✓</span>
+              <span>{message}</span>
             </div>
           )}
 

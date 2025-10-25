@@ -124,22 +124,23 @@ const registrationContbyAdmin = async (req: Request, res: Response) => {
     const employeeEmail = email;
 
     // Send welcome email
-    try {
-      if (employeeEmail) {
-        await sendEmail({
-          to: employeeEmail,
-          subject: emailTemplate.subject,
-          text: emailTemplate.text,
-          html: emailTemplate.html,
-        });
-      }
-    } catch (emailError) {
-      console.warn(
-        "Warning: Failed to send welcome email to employee:",
-        emailError
-      );
-      // Continue with registration even if email fails
-    }
+    //! issue email sending commented for testing purposes
+    // try {
+    //   if (employeeEmail) {
+    //     await sendEmail({
+    //       to: employeeEmail,
+    //       subject: emailTemplate.subject,
+    //       text: emailTemplate.text,
+    //       html: emailTemplate.html,
+    //     });
+    //   }
+    // } catch (emailError) {
+    //   console.warn(
+    //     "Warning: Failed to send welcome email to employee:",
+    //     emailError
+    //   );
+    //   // Continue with registration even if email fails
+    // }
 
     await transaction.commit();
 
@@ -171,6 +172,11 @@ const loginCont = async (req: Request, res: Response) => {
     const user = await User.findOne({
       where: { email: email.toLowerCase() },
     });
+    console.log("🔍 User found:", {
+      email: user?.email,
+      role: user?.role,
+      tempPassword: user?.tempPassword,
+    });
     const passwordFromDB = user?.password;
     // Compare SHA256-hashed password with bcrypt hash in DB
     const isMatch = passwordFromDB
@@ -195,7 +201,7 @@ const loginCont = async (req: Request, res: Response) => {
         role: user.role,
         directManagerId: user.directManagerId,
       });
-      res.cookie("reset_auth_token", token, {
+      res.cookie("token", token, {
         httpOnly: true, // JS can't read this cookie
         //secure: process.env.NODE_ENV === "production", // only HTTPS in prod
         secure: false, // for development over HTTP
@@ -225,6 +231,10 @@ const loginCont = async (req: Request, res: Response) => {
 
     // user exists and first login changing password is required
     else if (isMatch && user.tempPassword === true) {
+    }
+
+    // user exists and first login changing password is required
+    else if (isMatch && user.tempPassword === true) {
       //generate th vf code and send it to the user email
       const verificationCode = Math.floor(
         100000 + Math.random() * 900000
@@ -248,12 +258,14 @@ const loginCont = async (req: Request, res: Response) => {
         name: user.name,
         verificationCode: verificationCode,
       });
-      await sendEmail({
-        to: email,
-        subject: emailTemplate.subject,
-        text: emailTemplate.text,
-        html: emailTemplate.html,
-      });
+      //!issue email sending commented for testing purposes
+      // await sendEmail({
+      //   to: email,
+      //   subject: emailTemplate.subject,
+      //   text: emailTemplate.text,
+      //   html: emailTemplate.html,
+      // });
+      console.log("Verification code sent to email:", verificationCode);
 
       return res.status(Messages.ACTION_REQUIRED.status).json({
         user: {
@@ -268,7 +280,7 @@ const loginCont = async (req: Request, res: Response) => {
           salary: user.salary,
           phoneNumber: user.phoneNumber,
           directManagerId: user.directManagerId,
-          tempPassword: user.tempPassword, // Indicates password change required
+          // tempPassword: user.tempPassword, // Indicates password change required
         },
         message: Messages.ACTION_REQUIRED.message,
         code: Messages.ACTION_REQUIRED.code,
@@ -364,6 +376,8 @@ export const verifyCont = async (req: Request, res: Response) => {
 // Change Password Controller
 const changePasswordCont = async (req: Request, res: Response) => {
   const { email, newPassword, confirmPassword } = req.body;
+  const tokenExpirationMs = 2 * 60 * 60 * 1000; // 2 hours
+
   if (newPassword !== confirmPassword) {
     return res.status(Errors.PASSWORD_MISMATCH.status).json({
       error: Errors.PASSWORD_MISMATCH.error,
@@ -383,6 +397,21 @@ const changePasswordCont = async (req: Request, res: Response) => {
         { password: hashedNewPassword, tempPassword: false },
         { where: { id: user.id } }
       );
+
+      // Clear the reset_auth_token and issue a normal token
+      res.clearCookie("reset_auth_token");
+      const token = issueToken({
+        userId: user.id,
+        role: user.role,
+        directManagerId: user.directManagerId,
+      });
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: false, // for development over HTTP
+        sameSite: "strict",
+        maxAge: tokenExpirationMs,
+      });
+
       return res.status(Messages.PASSWORD_CHANGED.status).json({
         message: Messages.PASSWORD_CHANGED.message,
         code: Messages.PASSWORD_CHANGED.code,

@@ -83,7 +83,7 @@ export const authorizePasswordChange = (
   res: Response,
   next: NextFunction
 ) => {
-  console.log("req.cookies:", req.cookies);
+  // console.log("req.cookies:", req.cookies);
   // 1. Get the token from the *specific* reset cookie name
   const token = req.cookies?.reset_auth_token;
   if (!token) {

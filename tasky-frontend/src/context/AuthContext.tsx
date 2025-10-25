@@ -6,12 +6,12 @@ import React, {
   useMemo,
   ReactNode,
 } from "react";
-import { mockAPI } from "../api/mockApi";
 import { apiService } from "../api/api";
 import {
   AuthContextType,
   User,
   VerificationSuccessPayload,
+  StandardSuccessPayload,
 } from "../types/user";
 
 // Initialize context with a safe, typed default value (casting to ensure TS acceptance)
@@ -27,7 +27,11 @@ const defaultContextValue: AuthContextType = {
       code: "",
       nextStep: "CHANGE_PASSWORD",
     } as VerificationSuccessPayload),
-  changePassword: async () => {},
+  changePassword: async () =>
+    ({
+      message: "",
+      code: "",
+    } as StandardSuccessPayload),
   isAdmin: false,
   isUser: false,
   userId: undefined,
@@ -61,10 +65,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Check if password change is required
       if (response.code === "PASSWORD_CHANGE_REQUIRED") {
         setActionRequired("PASSWORD_CHANGE_REQUIRED");
+        setIsVerified(false); // Reset verification state on new login
         localStorage.setItem("actionRequired", "PASSWORD_CHANGE_REQUIRED");
+        localStorage.setItem("isVerified", "false"); // Persist verification state
       } else {
         setActionRequired(null);
+        setIsVerified(false);
         localStorage.removeItem("actionRequired");
+        localStorage.removeItem("isVerified");
       }
 
       localStorage.setItem("currentUser", JSON.stringify(response.user));
@@ -84,26 +92,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsVerified(false); // Clear verified status on logout
     localStorage.removeItem("currentUser");
     localStorage.removeItem("actionRequired");
+    localStorage.removeItem("isVerified"); // Clear persisted verification state
   }, []);
 
   const changePassword = useCallback(
-    async (email: string, newPassword: string) => {
+    async (email: string, newPassword: string, confirmPassword: string) => {
       setLoading(true);
       setError(null);
       try {
         // Call API to change password
-        // In real integration, use apiService.changePassword
-        await mockAPI.changePassword(email, newPassword);
+        console.log("🔄 Calling changePassword API...");
+        const response = await apiService.changePassword(
+          email,
+          newPassword,
+          confirmPassword
+        );
 
-        // On success, clear the action required flag
+        // On success, clear the action required flags
+        console.log("✅ Password changed successfully:", response);
         setActionRequired(null);
-        setIsVerified(false); // Clear verified status
+        setIsVerified(false); // Clear verified status after successful password change
         localStorage.removeItem("actionRequired");
+        localStorage.removeItem("isVerified"); // Clear persisted verification state
+
+        // Return the response so the caller can access the message
+        return response;
 
         // Final step: Force a re-login to get a proper session token with tempPassword: false
         // In production, we would call apiService.login again here.
-        window.location.reload();
+        // window.location.reload();
       } catch (err) {
+        console.error("❌ Password change failed:", err);
         setError(
           err instanceof Error ? err.message : "Failed to change password"
         );
@@ -125,12 +144,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // --- CRITICAL FIX: Update state for the next step ---
       if (response.nextStep === "CHANGE_PASSWORD") {
         // Verification successful - set flag to allow router navigation
+        console.log("✅ Verification successful, setting isVerified=true");
         setIsVerified(true);
+        localStorage.setItem("isVerified", "true"); // Persist verification state
       }
 
       return response;
     } catch (err) {
+      console.error("❌ Verification failed:", err);
       setError(err instanceof Error ? err.message : "Failed to verify code");
+      // Ensure isVerified stays false on error
+      setIsVerified(false);
+      localStorage.setItem("isVerified", "false");
       throw err;
     } finally {
       setLoading(false);
@@ -140,6 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const storedUser = localStorage.getItem("currentUser");
     const storedActionRequired = localStorage.getItem("actionRequired");
+    const storedIsVerified = localStorage.getItem("isVerified");
 
     if (storedUser) {
       try {
@@ -153,6 +179,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     if (storedActionRequired) {
       setActionRequired(storedActionRequired);
+    }
+
+    // Restore verification state from localStorage
+    if (storedIsVerified === "true") {
+      setIsVerified(true);
+      console.log("🔄 Restored isVerified=true from localStorage");
+    } else {
+      setIsVerified(false);
     }
   }, []);
 

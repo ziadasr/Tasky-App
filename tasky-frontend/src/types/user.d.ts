@@ -26,17 +26,25 @@ export interface AuthContextType {
     email: string,
     code: string
   ) => Promise<VerificationSuccessPayload>;
-  changePassword: (email: string, newPassword: string) => Promise<void>;
+  changePassword: (
+    email: string,
+    newPassword: string,
+    confirmPassword: string
+  ) => Promise<StandardSuccessPayload>;
   isAdmin: boolean;
   isUser: boolean;
   userId: string | undefined;
-  isVerified: boolean; // <--- ADD THIS LINE
+  isVerified: boolean;
   actionRequired: string | null;
 }
 // Standard error payload from backend
 //since all errors from the backend mostly return the same structure, we can use a standard interface
 export interface StandardErrorPayload {
   error: string;
+  code: string;
+}
+export interface StandardSuccessPayload {
+  message: string;
   code: string;
 }
 

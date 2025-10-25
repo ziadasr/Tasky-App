@@ -82,12 +82,40 @@ export const validationHandler = (
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
-    // If validation fails, return a 400 Bad Request immediately
-    return res.status(Errors.BAD_REQUEST.status).json({
-      error: Errors.BAD_REQUEST.error,
-      code: Errors.BAD_REQUEST.code,
-      details: errors.array(),
-    });
+    // Extract detailed error messages
+    const errorMessages = errors.array().map((err) => ({
+      field: err.type === "field" ? err.path : err.type,
+      message: err.msg,
+    }));
+
+    // For password validation errors, create a short summary message
+    const passwordErrors = errorMessages.filter(
+      (err) => err.field === "newPassword" || err.field === "confirmPassword"
+    );
+
+    let shortMessage = errorMessages.map((err) => err.message).join(" ");
+
+    // If there are password errors, create a concise message
+    if (passwordErrors.length > 0) {
+      shortMessage = `Password must: ${passwordErrors
+        .map((err) =>
+          err.message
+            .toLowerCase()
+            .replace("password must ", "")
+            .replace("password confirmation ", "")
+        )
+        .join(", ")}`;
+    }
+
+    // Build error response
+    const errorResponse = {
+      error: shortMessage,
+      code: "VALIDATION_ERROR",
+      details: errorMessages,
+    };
+
+    // Return validation error response
+    return res.status(Errors.BAD_REQUEST.status).json(errorResponse);
   }
   next(); // Proceed to the controller if validation passed
 };

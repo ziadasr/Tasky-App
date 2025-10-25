@@ -15,7 +15,14 @@ interface ChangePasswordProps {
 export const ChangePassword: React.FC<ChangePasswordProps> = ({
   onNavigate,
 }) => {
-  const { user, changePassword, logout, loading, actionRequired } = useAuth();
+  const {
+    user,
+    changePassword,
+    logout,
+    loading,
+    actionRequired,
+    error: contextError,
+  } = useAuth();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -42,15 +49,27 @@ export const ChangePassword: React.FC<ChangePasswordProps> = ({
     }
 
     try {
-      await changePassword(user.email, newPassword);
-      setMessage(
-        "Success! Your password has been updated. Redirecting to Dashboard..."
+      console.log("🔄 Calling changePassword...");
+      const response = await changePassword(
+        user.email,
+        newPassword,
+        confirmPassword
       );
+
+      // Show the backend response message
+      const successMsg =
+        response?.message ||
+        "Success! Your password has been updated. Redirecting to Dashboard...";
+      setMessage(successMsg);
+      console.log("✅ Change password response:", response);
+
       // Give the user a moment to see the success message
       setTimeout(() => {
-        onNavigate("Dashboard" as AppPath);
-      }, 1500);
+        console.log("➡️ Reloading page...");
+        window.location.reload();
+      }, 2000);
     } catch (err) {
+      console.error("❌ Password change error:", err);
       setError(
         err instanceof Error
           ? err.message
@@ -99,9 +118,9 @@ export const ChangePassword: React.FC<ChangePasswordProps> = ({
             required
           />
 
-          {error && (
+          {(error || contextError) && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
-              {error}
+              {error || contextError}
             </div>
           )}
 

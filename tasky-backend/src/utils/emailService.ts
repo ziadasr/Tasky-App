@@ -1,4 +1,4 @@
-import axios from "axios";
+import nodemailer from "nodemailer";
 
 interface MailParams {
   to: string;
@@ -7,43 +7,48 @@ interface MailParams {
   html?: string;
 }
 
-const mailtrapApi = axios.create({
-  baseURL: process.env.MAILTRAP_API_URL || "https://sandbox.smtp.mailtrap.io",
-  headers: {
-    Authorization: `Bearer ${process.env.MAILTRAP_API_TOKEN!}`,
-    "Content-Type": "application/json",
+// ========== MAILTRAP CONFIGURATION (COMMENTED OUT - REACHED FREE LIMIT) ==========
+// import axios from "axios";
+// const mailtrapApi = axios.create({
+//   baseURL: process.env.MAILTRAP_API_URL || "https://sandbox.smtp.mailtrap.io",
+//   headers: {
+//     Authorization: `Bearer ${process.env.MAILTRAP_API_TOKEN!}`,
+//     "Content-Type": "application/json",
+//   },
+// });
+
+// ========== CUSTOM EMAIL CONFIGURATION USING NODEMAILER ==========
+// Create transporter with your own email credentials
+const transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_HOST || "smtp.gmail.com",
+  port: parseInt(process.env.EMAIL_PORT || "587"),
+  secure: process.env.EMAIL_PORT === "465", // true for 465, false for other ports
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD,
   },
 });
 
 export const sendEmail = async ({ to, subject, text, html }: MailParams) => {
   const fromEmail = process.env.EMAIL_FROM!;
 
-  const mailPayload = {
-    from: {
-      email: fromEmail.match(/<([^>]+)>/)?.[1] || "noreply@tasky.local",
-      name: fromEmail.match(/^([^<]+)/)?.[1] || "Tasky Support",
-    },
-    to: [{ email: to }],
-    subject,
-    text,
-    html,
-  };
-
   try {
-    const response = await mailtrapApi.post(
-      `/api/send/${process.env.MAILTRAP_INBOX_ID}`,
-      mailPayload
-    );
-    console.log(
-      `✅ Email sent successfully. ID: ${response.data.message_ids[0]}`
-    );
+    // Send email using nodemailer
+    const info = await transporter.sendMail({
+      from: fromEmail,
+      to,
+      subject,
+      text,
+      html,
+    });
+
+    console.log(`✅ Email sent successfully. ID: ${info.messageId}`);
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      console.error("API Response Data:", error.response.data);
-      throw new Error(
-        `Failed to send email: ${error.response.status} - ${error.response.statusText}`
-      );
-    }
-    throw new Error("An unknown error occurred during email sending.");
+    console.error("❌ Failed to send email:", error);
+    throw new Error(
+      `Failed to send email: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
   }
 };

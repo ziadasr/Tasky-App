@@ -2,6 +2,7 @@ import axios from "axios";
 import {
   LoginSuccessPayload,
   StandardErrorPayload,
+  StandardSuccessPayload,
   VerificationSuccessPayload,
 } from "../types/user";
 const API_URL = "http://localhost:5000";
@@ -20,6 +21,8 @@ export const apiService = {
    * Handles user login and initiation of the first-time password change flow.
    * Throws an error if authentication fails (4xx/5xx status code).
    */
+
+  //login apiend-point -- works well
   login: async (
     email: string,
     password: string
@@ -90,29 +93,40 @@ export const apiService = {
       throw new Error("Network error or server connection failed.");
     }
   },
-};
 
-//   // Change password endpoint
-//   changePassword: async (
-//     email: string,
-//     newPassword: string,
-//     verificationCode?: string
-//   ): Promise<any> => {
-//     try {
-//       const response = await api.post("/auth/change-password", {
-//         email,
-//         newPassword,
-//         verificationCode,
-//       });
-//       return response.data;
-//     } catch (error: any) {
-//       throw new Error(
-//         error.response?.data?.error ||
-//           "Password change failed. Please try again."
-//       );
-//     }
-//   },
-// };
+  // Change password endpoint
+  changePassword: async (
+    email: string,
+    newPassword: string,
+    confirmPassword: string
+  ): Promise<StandardSuccessPayload> => {
+    try {
+      const response = await axiosInstance.post("/api/auth/change-password", {
+        email,
+        newPassword,
+        confirmPassword,
+      });
+      return response.data;
+    } catch (error: any) {
+      // Check if this is an Axios error with a response payload
+      if (axios.isAxiosError(error) && error.response) {
+        // Assert the error response data to our StandardErrorPayload type
+        const errorData = error.response.data as StandardErrorPayload;
+
+        // Priority 1: Use the explicit error message from the backend
+        if (errorData.error) {
+          // This error message will be caught and displayed by AuthContext
+          throw new Error(errorData.error);
+        }
+
+        // Priority 2: Use a generic message based on HTTP status
+        throw new Error(`Login failed. Status: ${error.response.status}.`);
+      }
+      // Fallback for network or unknown errors
+      throw new Error("Network error or server connection failed.");
+    }
+  },
+};
 
 //   // Get current user info
 //   getCurrentUser: async (): Promise<User> => {

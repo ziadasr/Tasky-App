@@ -37,8 +37,8 @@ export const LoginPage: React.FC = () => {
         </div>
 
         <p className="text-center text-sm text-gray-500 mb-6">
-          Use mock user: `ziad@taskyapp.com` or `user1@tasky.com`. Password:
-          `Ziadassar@1`.
+          Use mock user: ziad@taskyapp.com or admin@tasky.com. Password:
+          Ziadassar@1.
         </p>
         <form onSubmit={handleSubmit}>
           <Input
