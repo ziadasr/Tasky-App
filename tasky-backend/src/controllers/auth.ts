@@ -16,22 +16,22 @@ import {
 import { error } from "console";
 //in the bottom of the file u will find the expected req of each middleware
 
+//*last edit user logs in has to complete some fields (city- phone-number-dateofbirth)
 const registrationContbyAdmin = async (req: Request, res: Response) => {
   //the pass is constant and set by user at the first login so not includded in the req
   //first login is false bydefault untill the user logins for the first time
   //lastlogin is handeled by the db
-  const {
-    name,
-    email,
-    dateOfBirth,
-    phoneNumber,
-    city,
-    department,
-    role,
-    directManagerId,
-  } = req.body;
+  const { name, email, department, role, directManagerId, salary } = req.body;
   console.log("Request Body:", req.body);
   console.log("Direct Manager ID:", directManagerId);
+
+  // Validate role is either Manager or Employee
+  if (!role || (role !== "Manager" && role !== "Employee")) {
+    return res.status(Errors.BAD_REQUEST.status).json({
+      error: "Role must be either 'Manager' or 'Employee'",
+      code: Errors.BAD_REQUEST.code,
+    });
+  }
 
   // Set default password that user must change on first login
   const defaultPassword = "TempPassword";
@@ -95,15 +95,16 @@ const registrationContbyAdmin = async (req: Request, res: Response) => {
         name: name,
         email: email.toLowerCase(),
         password: hashedPassword,
-        dateOfBirth: dateOfBirth,
-        phoneNumber: phoneNumber,
         department: department,
         encryptedVerificationCode: encryptedVerificationCode,
-        city: city,
         role: role,
         directManagerId: directManagerId,
         tempPassword: true, // User hasn't logged in yet
         lastLogin: null, // No login yet
+        salary: salary,
+        dateOfBirth: null,
+        city: null,
+        phoneNumber: null,
       },
       { transaction: transaction }
     );
@@ -115,8 +116,6 @@ const registrationContbyAdmin = async (req: Request, res: Response) => {
       tempPassword: defaultPassword,
       department,
       role,
-      dateOfBirth,
-      phoneNumber,
       managerName: manager.name, // Include manager name from the verified manager
     });
 
@@ -231,10 +230,6 @@ const loginCont = async (req: Request, res: Response) => {
 
     // user exists and first login changing password is required
     else if (isMatch && user.tempPassword === true) {
-    }
-
-    // user exists and first login changing password is required
-    else if (isMatch && user.tempPassword === true) {
       //generate th vf code and send it to the user email
       const verificationCode = Math.floor(
         100000 + Math.random() * 900000
@@ -266,7 +261,6 @@ const loginCont = async (req: Request, res: Response) => {
       //   html: emailTemplate.html,
       // });
       console.log("Verification code sent to email:", verificationCode);
-
       return res.status(Messages.ACTION_REQUIRED.status).json({
         user: {
           id: user.id,
@@ -374,8 +368,15 @@ export const verifyCont = async (req: Request, res: Response) => {
 };
 
 // Change Password Controller
-const changePasswordCont = async (req: Request, res: Response) => {
-  const { email, newPassword, confirmPassword } = req.body;
+const completeProfileCont = async (req: Request, res: Response) => {
+  const {
+    email,
+    newPassword,
+    confirmPassword,
+    city,
+    phoneNumber,
+    dateOfBirth,
+  } = req.body;
   const tokenExpirationMs = 2 * 60 * 60 * 1000; // 2 hours
 
   if (newPassword !== confirmPassword) {
@@ -394,7 +395,13 @@ const changePasswordCont = async (req: Request, res: Response) => {
     } else {
       const hashedNewPassword = await bcrypt.hash(newPassword, 10);
       await User.update(
-        { password: hashedNewPassword, tempPassword: false },
+        {
+          password: hashedNewPassword,
+          tempPassword: false,
+          city: city,
+          phoneNumber: phoneNumber,
+          dateOfBirth: dateOfBirth,
+        },
         { where: { id: user.id } }
       );
 
@@ -411,10 +418,10 @@ const changePasswordCont = async (req: Request, res: Response) => {
         sameSite: "strict",
         maxAge: tokenExpirationMs,
       });
-
-      return res.status(Messages.PASSWORD_CHANGED.status).json({
-        message: Messages.PASSWORD_CHANGED.message,
-        code: Messages.PASSWORD_CHANGED.code,
+      //! the response used was PASSWORD_CHANGED - now it is PROFILE_UPDATED
+      return res.status(Messages.PROFILE_UPDATED.status).json({
+        message: Messages.PROFILE_UPDATED.message,
+        code: Messages.PROFILE_UPDATED.code,
       });
     }
   } catch (err) {
@@ -635,7 +642,7 @@ export default {
   registrationContbyAdmin,
   loginCont,
   verifyCont,
-  changePasswordCont,
+  completeProfileCont,
 
   //   forgotPasswordCont,
   //   getUserInfo,

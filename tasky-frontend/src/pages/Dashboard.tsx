@@ -70,9 +70,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         Welcome, {user.name}
       </h1>
       <p className="text-gray-500 mb-8">
-        {isAdmin
-          ? "Admin Dashboard: Overview of all tasks."
-          : "Your Dashboard: Quick view of your assigned tasks."}
+        {user.role === "Manager"
+          ? "Manager Dashboard: Manage your team's tasks."
+          : "Employee Dashboard: View your assigned tasks."}
       </p>
 
       {/* Stats Cards */}
@@ -124,7 +124,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       <Card className="mt-8">
         <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
         <div className="flex flex-wrap gap-4">
-          {isAdmin && (
+          {user.role === "Manager" && (
             <>
               <Button variant="primary" onClick={() => onNavigate("AddTask")}>
                 Create New Task

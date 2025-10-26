@@ -8,18 +8,20 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout } = useAuth();
 
   const navItems = useMemo(
     () => [
       { name: "Dashboard", path: "Dashboard" as AppPath },
       { name: "View Tasks", path: "TaskList" as AppPath },
-      ...(isAdmin ? [{ name: "Add Task", path: "AddTask" as AppPath }] : []),
-      ...(isAdmin
+      ...(user?.role === "Manager"
+        ? [{ name: "Add Task", path: "AddTask" as AppPath }]
+        : []),
+      ...(user?.role === "Manager"
         ? [{ name: "Register User", path: "Register" as AppPath }]
         : []),
     ],
-    [isAdmin]
+    [user?.role]
   );
 
   if (!user) return null; // Should not happen in a protected route

@@ -98,13 +98,19 @@ export const apiService = {
   changePassword: async (
     email: string,
     newPassword: string,
-    confirmPassword: string
+    confirmPassword: string,
+    phoneNumber: string,
+    city: string,
+    dateOfBirth: string
   ): Promise<StandardSuccessPayload> => {
     try {
-      const response = await axiosInstance.post("/api/auth/change-password", {
+      const response = await axiosInstance.post("/api/auth/Complete-Profile", {
         email,
         newPassword,
         confirmPassword,
+        phoneNumber,
+        city,
+        dateOfBirth,
       });
       return response.data;
     } catch (error: any) {
@@ -123,6 +129,39 @@ export const apiService = {
         throw new Error(`Login failed. Status: ${error.response.status}.`);
       }
       // Fallback for network or unknown errors
+      throw new Error("Network error or server connection failed.");
+    }
+  },
+
+  registerUser: async (
+    name: string,
+    email: string,
+    salary: number,
+    managerId: number,
+    role: string,
+    department: string
+  ): Promise<StandardSuccessPayload> => {
+    try {
+      const response = await axiosInstance.post("/api/auth/register-by-admin", {
+        name,
+        email,
+        salary,
+        directManagerId: managerId,
+        role,
+        department,
+      });
+      return response.data;
+    } catch (error: any) {
+      if (axios.isAxiosError(error) && error.response) {
+        const errorData = error.response.data as StandardErrorPayload;
+        if (errorData.error) {
+          throw new Error(errorData.error);
+        }
+
+        throw new Error(
+          `Registration failed. Status: ${error.response.status}.`
+        );
+      }
       throw new Error("Network error or server connection failed.");
     }
   },

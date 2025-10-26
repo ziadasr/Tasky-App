@@ -29,7 +29,10 @@ export interface AuthContextType {
   changePassword: (
     email: string,
     newPassword: string,
-    confirmPassword: string
+    confirmPassword: string,
+    phoneNumber: string,
+    city: string,
+    dateOfBirth: string
   ) => Promise<StandardSuccessPayload>;
   isAdmin: boolean;
   isUser: boolean;

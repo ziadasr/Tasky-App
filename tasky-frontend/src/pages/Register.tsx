@@ -5,7 +5,8 @@ import {
   Button,
   Spinner,
 } from "../components/common/UIComponents";
-import { mockAPI } from "../api/mockApi";
+import { apiService } from "../api/api";
+import { useAuth } from "../context/AuthContext";
 
 interface Message {
   type: "success" | "error";
@@ -13,35 +14,57 @@ interface Message {
 }
 
 export const RegisterPage: React.FC = () => {
+  const { user } = useAuth();
   const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
+  const [salary, setSalary] = useState<string>("");
+  const [role, setRole] = useState<string>("Employee");
+  const [department, setDepartment] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<Message | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email) {
+    if (!name || !email || !salary || !role || !department) {
       setMessage({ type: "error", text: "Please fill in all fields." });
+      return;
+    }
+
+    const salaryNum = parseFloat(salary);
+    if (salaryNum <= 0) {
+      setMessage({ type: "error", text: "Salary must be greater than 0." });
       return;
     }
 
     setLoading(true);
     setMessage(null);
     try {
-      const newUser = await mockAPI.registerUser(name, email);
+      const response = await apiService.registerUser(
+        name,
+        email,
+        parseFloat(salary),
+        user?.id ? parseInt(user.id as string) : 0,
+        role,
+        department
+      );
       setMessage({
         type: "success",
-        text: `User "${newUser.name}" created successfully with email: ${newUser.email}`,
+        text:
+          response.message ||
+          `User "${name}" created successfully with email: ${email}`,
       });
       setName("");
       setEmail("");
+      setSalary("");
+      setRole("Employee");
+      setDepartment("");
     } catch (error) {
       setMessage({
         type: "error",
         text:
           error instanceof Error
             ? error.message
-            : "Failed to create user. Try a different username.",
+            : "Failed to create user. Please try again.",
       });
     } finally {
       setLoading(false);
@@ -53,32 +76,88 @@ export const RegisterPage: React.FC = () => {
       <h1 className="text-3xl font-bold text-gray-900 mb-6">
         Register New User
       </h1>
-      <Card className="max-w-xl">
-        <form onSubmit={handleSubmit}>
+      <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+        <p className="text-sm text-blue-700">
+          <strong>Manager ID:</strong> {user?.id || "N/A"}
+        </p>
+      </div>
+      <Card className="max-w-2xl">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Full Name"
+              id="name"
+              placeholder="John Doe"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+            <Input
+              label="Email Address"
+              id="regEmail"
+              type="email"
+              placeholder="user@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Salary"
+              id="salary"
+              type="number"
+              placeholder="50000"
+              value={salary}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === "" || parseFloat(value) >= 0) {
+                  setSalary(value);
+                }
+              }}
+              min="0"
+              required
+            />
+            <div>
+              <label
+                htmlFor="role"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Role *
+              </label>
+              <select
+                id="role"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                required
+              >
+                <option value="Employee">Employee</option>
+                <option value="Manager">Manager</option>
+                <option value="Admin">Admin</option>
+                <option value="User">User</option>
+              </select>
+            </div>
+          </div>
+
           <Input
-            label="Full Name"
-            id="name"
-            placeholder="John Doe"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            label="Department"
+            id="department"
+            placeholder="Engineering"
+            value={department}
+            onChange={(e) => setDepartment(e.target.value)}
             required
           />
-          <Input
-            label="Email Address"
-            id="regEmail"
-            type="email"
-            placeholder="user@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <p className="text-sm text-gray-500 mb-4 italic">
-            Note: Mock users are created with the default password "password".
+
+          <p className="text-sm text-gray-500 italic">
+            Note: Users are created with the default password "TempPassword"
+            which must be changed on first login.
           </p>
 
           {message && (
             <div
-              className={`mb-4 p-3 rounded-lg text-sm ${
+              className={`p-3 rounded-lg text-sm ${
                 message.type === "success"
                   ? "bg-green-100 border-green-400 text-green-700"
                   : "bg-red-100 border-red-400 text-red-700"
@@ -88,7 +167,7 @@ export const RegisterPage: React.FC = () => {
             </div>
           )}
 
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading} className="w-full">
             {loading ? <Spinner /> : "Add User"}
           </Button>
         </form>

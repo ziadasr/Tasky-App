@@ -2,7 +2,8 @@ export const Messages = {
   USER_REGISTERED: {
     code: "USER_REGISTERED",
     status: 200,
-    message: "User registered successfully, please verify your email",
+    message:
+      "User registered successfully, 1st login profile completion required",
   },
   ACTION_REQUIRED: {
     status: 202,
@@ -27,5 +28,10 @@ export const Messages = {
     status: 200,
     message: "Verification code accepted successfully",
     nextStep: "CHANGE_PASSWORD",
+  },
+  PROFILE_UPDATED: {
+    code: "PROFILE_UPDATED",
+    status: 200,
+    message: "Profile completed and password changed successfully",
   },
 };

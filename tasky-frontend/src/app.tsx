@@ -115,17 +115,16 @@ const TaskManagerApp: React.FC = () => {
     }
   }, [actionRequired, currentPath]);
 
-  // Auto-navigate to ChangePassword when verified (only if still on VerifyCode)
+  // Auto-navigate to ChangePassword when verified
   useEffect(() => {
     if (
       actionRequired === "PASSWORD_CHANGE_REQUIRED" &&
       isVerified &&
       currentPath === "VerifyCode"
     ) {
-      console.log("Auto-navigating to ChangePassword due to isVerified flag");
       setCurrentPath("ChangePassword");
     }
-  }, [isVerified, actionRequired]);
+  }, [isVerified, actionRequired, currentPath]);
 
   const renderPage = useMemo(() => {
     // --- CRITICAL ROUTER GUARD FIX: Force user to the required action page ---
@@ -170,14 +169,14 @@ const TaskManagerApp: React.FC = () => {
         );
       case "AddTask":
         return (
-          <ProtectedRoute allowedRoles={["Admin"]}>
+          <ProtectedRoute allowedRoles={["Manager"]}>
             <TaskFormPage onNavigate={handleNavigate} />
           </ProtectedRoute>
         );
       case "EditTask":
         // Renders AddTask page but with an ID
         return (
-          <ProtectedRoute allowedRoles={["Admin"]}>
+          <ProtectedRoute allowedRoles={["Manager"]}>
             <TaskFormPage
               onNavigate={handleNavigate}
               taskId={routeParams.taskId}
@@ -186,7 +185,7 @@ const TaskManagerApp: React.FC = () => {
         );
       case "Register":
         return (
-          <ProtectedRoute allowedRoles={["Admin"]}>
+          <ProtectedRoute allowedRoles={["Manager"]}>
             <RegisterPage />
           </ProtectedRoute>
         );

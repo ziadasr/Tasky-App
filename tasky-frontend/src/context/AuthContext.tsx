@@ -96,7 +96,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const changePassword = useCallback(
-    async (email: string, newPassword: string, confirmPassword: string) => {
+    async (
+      email: string,
+      newPassword: string,
+      confirmPassword: string,
+      phoneNumber: string,
+      city: string,
+      dateOfBirth: string
+    ) => {
       setLoading(true);
       setError(null);
       try {
@@ -105,7 +112,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const response = await apiService.changePassword(
           email,
           newPassword,
-          confirmPassword
+          confirmPassword,
+          phoneNumber,
+          city,
+          dateOfBirth
         );
 
         // On success, clear the action required flags

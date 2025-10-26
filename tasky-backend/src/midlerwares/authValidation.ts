@@ -18,15 +18,15 @@ export const validateRegistration: ValidationChain[] = [
     .withMessage("Please enter a valid email address.")
     .normalizeEmail(),
 
-  body("dateOfBirth")
-    .isDate()
-    .withMessage("Date of birth must be a valid date (YYYY-MM-DD format)."),
+  // body("dateOfBirth")
+  //   .isDate()
+  //   .withMessage("Date of birth must be a valid date (YYYY-MM-DD format)."),
 
-  body("phoneNumber")
-    .isMobilePhone("any")
-    .withMessage("Invalid phone number format."),
+  // body("phoneNumber")
+  //   .isMobilePhone("any")
+  //   .withMessage("Invalid phone number format."),
 
-  body("city").trim().notEmpty().withMessage("City is required."),
+  // body("city").trim().notEmpty().withMessage("City is required."),
 
   body("department").trim().notEmpty().withMessage("Department is required."),
 

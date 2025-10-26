@@ -25,6 +25,9 @@ export const ChangePassword: React.FC<ChangePasswordProps> = ({
   } = useAuth();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [city, setCity] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -53,7 +56,10 @@ export const ChangePassword: React.FC<ChangePasswordProps> = ({
       const response = await changePassword(
         user.email,
         newPassword,
-        confirmPassword
+        confirmPassword,
+        phoneNumber,
+        city,
+        dateOfBirth
       );
 
       // Show the backend response message
@@ -115,6 +121,36 @@ export const ChangePassword: React.FC<ChangePasswordProps> = ({
             placeholder="Confirm password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+          />
+
+          <Input
+            label="Phone Number"
+            id="phoneNumber"
+            type="tel"
+            placeholder="Enter phone number"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            required
+          />
+
+          <Input
+            label="City"
+            id="city"
+            type="text"
+            placeholder="Enter city"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            required
+          />
+
+          <Input
+            label="Date of Birth"
+            id="dateOfBirth"
+            type="date"
+            placeholder="Select date of birth"
+            value={dateOfBirth}
+            onChange={(e) => setDateOfBirth(e.target.value)}
             required
           />
 

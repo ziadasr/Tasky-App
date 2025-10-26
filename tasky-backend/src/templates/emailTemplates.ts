@@ -7,8 +7,6 @@ interface WelcomeEmailData {
   department: string;
   role: string;
   managerName?: string;
-  dateOfBirth: string;
-  phoneNumber: string;
 }
 
 export const generateWelcomeEmail = ({
@@ -18,8 +16,6 @@ export const generateWelcomeEmail = ({
   department,
   role,
   managerName,
-  dateOfBirth,
-  phoneNumber,
 }: WelcomeEmailData) => {
   return {
     subject: "Welcome to Tasky! 🚀 Your Account is Ready",
@@ -40,8 +36,6 @@ Name: ${name}
 Email: ${email}
 Department: ${department}
 Role: ${role}
-Date of Birth: ${dateOfBirth}
-Phone Number: ${phoneNumber}
 ${managerName ? `Your Manager: ${managerName}` : ""}
 
 YOUR LOGIN CREDENTIALS:
@@ -283,14 +277,6 @@ The Tasky Team`,
             <div class="detail-row">
               <span class="detail-label">Role:</span>
               <span class="detail-value">${role}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Date of Birth:</span>
-              <span class="detail-value">${dateOfBirth}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Phone Number:</span>
-              <span class="detail-value">${phoneNumber}</span>
             </div>
             ${
               managerName

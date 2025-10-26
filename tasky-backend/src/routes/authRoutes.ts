@@ -21,11 +21,11 @@ router.post(
   auth.registrationContbyAdmin
 );
 router.post(
-  "/change-password",
+  "/Complete-Profile",
   authorizePasswordChange,
   validateNewPassword,
   validationHandler,
-  auth.changePasswordCont
+  auth.completeProfileCont
 );
 router.post("/login", auth.loginCont);
 //verify users acc in the first login
