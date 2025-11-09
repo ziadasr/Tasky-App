@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { Button } from "../common/UIComponents";
 import { NavigateFunction, AppPath } from "../../app";
@@ -11,33 +11,45 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
   const { user, logout } = useAuth();
   const [notificationCount, setNotificationCount] = useState(0);
+  const hasInitialFetch = useRef(false);
 
-  // Fetch notification count on mount and periodically
+  // Fetch notification count on mount and when event is triggered
   useEffect(() => {
+    // Skip if already fetched (prevents StrictMode double-call)
+    if (hasInitialFetch.current) {
+      console.log("⏭️  [Sidebar] Already fetched, skipping duplicate");
+      return;
+    }
+
     const fetchNotificationCount = async () => {
       try {
+        console.log("🔔 [Sidebar] Fetching unread count...");
         const response = await apiService.getNotificationCount();
         setNotificationCount(response.unreadsCount);
+        console.log(
+          "✅ [Sidebar] Unread count updated:",
+          response.unreadsCount
+        );
       } catch (error) {
-        console.error("Error fetching notification count:", error);
+        console.error("❌ [Sidebar] Error fetching notification count:", error);
       }
     };
 
+    // Fetch on mount (when user first logs in)
+    console.log("📍 [Sidebar] useEffect mounted - fetching initial count");
+    hasInitialFetch.current = true;
     fetchNotificationCount();
 
-    // Refresh count every 30 seconds
-    const interval = setInterval(fetchNotificationCount, 30000);
-
-    // Listen for manual refresh event from Notifications page
+    // Listen for manual refresh event from Notifications page (after marking as read)
     const handleRefresh = () => {
+      console.log("📢 [Sidebar] Refresh event received - fetching count");
       fetchNotificationCount();
-      console.log("📢 Notification count refreshed");
     };
 
     window.addEventListener("refreshNotificationCount", handleRefresh);
 
     return () => {
-      clearInterval(interval);
+      console.log("📍 [Sidebar] useEffect cleanup");
       window.removeEventListener("refreshNotificationCount", handleRefresh);
     };
   }, []);

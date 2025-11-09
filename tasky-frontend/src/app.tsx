@@ -11,11 +11,13 @@ import { Dashboard } from "./pages/Dashboard";
 import { TaskList } from "./pages/TaskList";
 import { RegisterPage } from "./pages/Register";
 import { TaskFormPage } from "./pages/TaskForm";
+import { TaskDetailPage } from "./pages/TaskDetail";
 import { ChangePassword } from "./pages/ChangePassword";
 import { VerifyCode } from "./pages/VerifyCode";
 import { NotificationsPage } from "./pages/Notifications";
 import { Layout } from "./components/layout/Layout";
 import { TaskProvider } from "./context/TaskContext";
+import { TaskDetailProvider } from "./context/TaskDetailContext";
 import { Spinner, Button } from "./components/common/UIComponents";
 import { UserRole } from "./types/user";
 
@@ -25,6 +27,7 @@ export type AppPath =
   | "TaskList"
   | "AddTask"
   | "EditTask"
+  | "TaskDetail"
   | "Register"
   | "ChangePassword"
   | "VerifyCode"
@@ -91,6 +94,7 @@ const TaskManagerApp: React.FC = () => {
   const [routeParams, setRouteParams] = useState<{
     taskId?: string | null;
     filterStatus?: string | null;
+    task?: any; // Store task data for temporary access
   }>({});
   const { actionRequired, isVerified } = useAuth(); // <-- Added isVerified
 
@@ -188,6 +192,16 @@ const TaskManagerApp: React.FC = () => {
             />
           </ProtectedRoute>
         );
+      case "TaskDetail":
+        // View task details with permission checks
+        return (
+          <ProtectedRoute allowedRoles={["Employee", "Manager", "Admin"]}>
+            <TaskDetailPage
+              onNavigate={handleNavigate}
+              taskId={routeParams.taskId}
+            />
+          </ProtectedRoute>
+        );
       case "Register":
         return (
           <ProtectedRoute allowedRoles={["Manager"]}>
@@ -272,5 +286,9 @@ export const App: React.FC = () => {
   }
 
   // If user is logged in, render the main protected application wrapper
-  return <TaskManagerApp />;
+  return (
+    <TaskDetailProvider>
+      <TaskManagerApp />
+    </TaskDetailProvider>
+  );
 };

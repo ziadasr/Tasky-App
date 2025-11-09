@@ -219,6 +219,27 @@ export const apiService = {
     }
   },
 
+  // Get a single task by ID
+  getTaskById: async (taskId: string | number): Promise<{ task: any }> => {
+    try {
+      const response = await axiosInstance.get<{ task: any }>(
+        `/api/auth/tasks/${taskId}`
+      );
+      return response.data;
+    } catch (error: any) {
+      if (axios.isAxiosError(error) && error.response) {
+        const errorData = error.response.data as StandardErrorPayload;
+        if (errorData.error) {
+          throw new Error(errorData.error);
+        }
+        throw new Error(
+          `Failed to fetch task. Status: ${error.response.status}.`
+        );
+      }
+      throw new Error("Network error or server connection failed.");
+    }
+  },
+
   // Get direct employees for manager (to assign tasks)
   getDirectEmployees: async (): Promise<{
     message: string;
@@ -319,6 +340,31 @@ export const apiService = {
         }
         throw new Error(
           `Failed to update task. Status: ${error.response.status}.`
+        );
+      }
+      throw new Error("Network error or server connection failed.");
+    }
+  },
+
+  // Report task endpoint
+  reportTask: async (
+    taskId: string | number,
+    message: string
+  ): Promise<StandardSuccessPayload> => {
+    try {
+      const response = await axiosInstance.post<StandardSuccessPayload>(
+        `/api/auth/report-task/${taskId}`,
+        { message }
+      );
+      return response.data;
+    } catch (error: any) {
+      if (axios.isAxiosError(error) && error.response) {
+        const errorData = error.response.data as StandardErrorPayload;
+        if (errorData.error) {
+          throw new Error(errorData.error);
+        }
+        throw new Error(
+          `Failed to report task. Status: ${error.response.status}.`
         );
       }
       throw new Error("Network error or server connection failed.");

@@ -69,4 +69,9 @@ export const Messages = {
     status: 200,
     message: "Notifications marked as read successfully",
   },
+  TASK_REPORTED: {
+    code: "TASK_REPORTED",
+    status: 200,
+    message: "Task reported successfully",
+  },
 };

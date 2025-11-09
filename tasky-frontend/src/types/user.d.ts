@@ -84,17 +84,23 @@ export interface Notification {
   id: number;
   recipientId: number;
   senderId: number | null;
+  taskId: number | null;
   type:
     | "task_assigned"
     | "task_due"
+    | "task_started"
+    | "task_completed"
+    | "task_updated"
     | "report_created"
     | "report_resolved"
+    | "welcome_message"
     | "system";
   message: string;
   linkTo: string | null;
   isRead: boolean;
   createdAt: string;
   updatedAt: string;
+  Task?: any; // Task object included from notification response
 }
 
 export interface NotificationsPayload {

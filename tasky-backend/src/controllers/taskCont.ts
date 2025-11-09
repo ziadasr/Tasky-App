@@ -98,11 +98,129 @@ const CreateTaskCont = async (req: Request, res: Response) => {
     });
   }
 };
+// const getUserTasks = async (req: Request, res: Response) => {
+//   // Assert non-null as authenticateUser middleware should have run
+//   const userId = req.tokenUser!.userId;
+//   const userRole = req.tokenUser!.role;
+//   const queryStatus = req.query.status as string | undefined;
+
+//   // 1. DEFINE ALL STATUSES AND RESTRICTED LISTS
+//   const ALL_VALID_STATUSES = [
+//     "scheduled",
+//     "pending",
+//     "in_progress",
+//     "completed",
+//   ];
+//   const RESTRICTED_STATUSES = ["scheduled"];
+
+//   // 2. Determine the Final Filter based on the query and role
+//   let finalStatusFilter: any;
+
+//   if (queryStatus) {
+//     // --- A. Query Status Provided ---
+
+//     // Security Check 1: Validate input against the known ENUM list
+//     if (!ALL_VALID_STATUSES.includes(queryStatus)) {
+//       return res.status(Errors.BAD_REQUEST.status).json(Errors.BAD_REQUEST);
+//     }
+
+//     // Security Check 2: Block standard users from requesting 'scheduled' status
+//     if (
+//       RESTRICTED_STATUSES.includes(queryStatus) &&
+//       userRole !== "Manager" &&
+//       userRole !== "admin"
+//     ) {
+//       return res.status(Errors.UNAUTHORIZED.status).json({
+//         error: Errors.UNAUTHORIZED.error,
+//         code: Errors.UNAUTHORIZED.code,
+//       });
+//     }
+
+//     finalStatusFilter = queryStatus;
+//   } else {
+//     // --- B. Default Filter (No status provided in query) ---
+//     if (userRole === "Manager" || userRole === "admin") {
+//       // Managers see ALL statuses by default
+//       finalStatusFilter = { [Op.in]: ALL_VALID_STATUSES };
+//     } else {
+//       // Standard users see everything EXCEPT 'scheduled' by default
+//       finalStatusFilter = { [Op.notIn]: ["scheduled"] };
+//     }
+//   }
+
+//   // 3. Define the Ownership and Counting Conditions
+//   let countWhereCondition: any; // Used for the aggregate counting query
+//   let whereCondition: any; // Used for the main task list query
+
+//   if (userRole === "Manager" || userRole === "admin") {
+//     // Managers: Count ALL tasks and fetch ALL tasks based on the applied status filter
+//     countWhereCondition = {};
+//     whereCondition = { status: finalStatusFilter };
+//   } else {
+//     // Standard Users:
+//     // Count only tasks assigned to them, EXCLUDING restricted statuses
+//     countWhereCondition = {
+//       assigneeId: userId,
+//       status: { [Op.notIn]: RESTRICTED_STATUSES },
+//     };
+//     // Fetch the subset of those tasks based on the specific status filter
+//     whereCondition = {
+//       [Op.and]: [{ assigneeId: userId }, { status: finalStatusFilter }],
+//     };
+//   }
+
+//   try {
+//     // 4. AGGREGATION QUERY: Get total counts by status
+//     const statusCountsArray = await Task.findAll({
+//       attributes: [
+//         "status",
+//         [sequelize.fn("COUNT", sequelize.col("id")), "count"],
+//       ],
+//       where: countWhereCondition, // Uses the restricted/unrestricted condition
+//       group: ["status"],
+//       raw: true,
+//     });
+
+//     // Convert the array into a clean object map: { 'pending': 12, 'completed': 50, ... }
+//     const counts = statusCountsArray.reduce(
+//       (acc: Record<string, number>, item: any) => {
+//         acc[item.status] = parseInt(item.count, 10);
+//         return acc;
+//       },
+//       {}
+//     );
+
+//     // 5. FETCH MAIN TASK LIST
+//     const tasks = await Task.findAll({
+//       where: whereCondition, // Uses the specific status filter
+//       order: [["dueDate", "ASC"]],
+//       include: [
+//         { model: User, as: "Assignee", attributes: ["id", "name", "email"] },
+//         { model: User, as: "Creator", attributes: ["id", "name", "email"] },
+//       ],
+//     });
+
+//     // 6. RETURN FINAL RESPONSE with counts
+//     return res.status(Messages.TASKS_FETCHED.status).json({
+//       message: Messages.TASKS_FETCHED.message,
+//       tasks: tasks,
+//       count: tasks.length,
+//       statusCounts: counts, // The efficient aggregate counts
+//     });
+//   } catch (error) {
+//     console.error("Error fetching user tasks:", error);
+//     return res.status(Errors.INTERNAL_ERROR.status).json({
+//       error: Errors.INTERNAL_ERROR.error,
+//       code: Errors.INTERNAL_ERROR.code,
+//     });
+//   }
+// }; // backend/src/controllers/userController.ts
 const getUserTasks = async (req: Request, res: Response) => {
   // Assert non-null as authenticateUser middleware should have run
   const userId = req.tokenUser!.userId;
   const userRole = req.tokenUser!.role;
   const queryStatus = req.query.status as string | undefined;
+  const scopeFilter = req.query.scope as string | undefined; // e.g., 'assignedToMe' or 'assignedByMe'
 
   // 1. DEFINE ALL STATUSES AND RESTRICTED LISTS
   const ALL_VALID_STATUSES = [
@@ -118,52 +236,100 @@ const getUserTasks = async (req: Request, res: Response) => {
 
   if (queryStatus) {
     // --- A. Query Status Provided ---
-
-    // Security Check 1: Validate input against the known ENUM list
     if (!ALL_VALID_STATUSES.includes(queryStatus)) {
       return res.status(Errors.BAD_REQUEST.status).json(Errors.BAD_REQUEST);
     }
 
-    // Security Check 2: Block standard users from requesting 'scheduled' status
     if (
       RESTRICTED_STATUSES.includes(queryStatus) &&
       userRole !== "Manager" &&
       userRole !== "admin"
     ) {
-      return res.status(Errors.UNAUTHORIZED.status).json({
-        error: Errors.UNAUTHORIZED.error,
-        code: Errors.UNAUTHORIZED.code,
-      });
+      return res.status(Errors.UNAUTHORIZED.status).json(Errors.UNAUTHORIZED);
     }
-
     finalStatusFilter = queryStatus;
   } else {
     // --- B. Default Filter (No status provided in query) ---
     if (userRole === "Manager" || userRole === "admin") {
-      // Managers see ALL statuses by default
       finalStatusFilter = { [Op.in]: ALL_VALID_STATUSES };
     } else {
-      // Standard users see everything EXCEPT 'scheduled' by default
       finalStatusFilter = { [Op.notIn]: ["scheduled"] };
     }
   }
 
-  // 3. Define the Ownership and Counting Conditions
-  let countWhereCondition: any; // Used for the aggregate counting query
-  let whereCondition: any; // Used for the main task list query
+  // --- Start Transaction for all database operations ---
+  const t = await sequelize.transaction();
 
-  if (userRole === "Manager" || userRole === "admin") {
-    // Managers: Count ALL tasks and fetch ALL tasks based on the applied status filter
+  //  Determine Manager's Scope ---
+  let subordinateIds: number[] = [];
+  if (userRole === "Manager") {
+    try {
+      const subordinateUsers = await User.findAll({
+        where: { directManagerId: userId },
+        attributes: ["id"],
+        raw: true, // Fetch plain objects js
+        transaction: t, // Transaction applied
+      });
+      subordinateIds = subordinateUsers.map((u) => u.id);
+    } catch (error) {
+      // Rollback if the subordinate lookup fails
+      await t.rollback();
+      console.error("Error fetching subordinate users:", error);
+      return res
+        .status(Errors.INTERNAL_ERROR.status)
+        .json(Errors.INTERNAL_ERROR);
+    }
+  }
+  // The scope includes the manager and their team members
+  const managerScopeIds = [userId, ...subordinateIds]; // With spread operator to flatten array --> merge the userid wwith the subordinate ids array
+  //[1,5,8,12]
+  // 3. Define the Ownership and Counting Conditions
+  let countWhereCondition: any;
+  let whereCondition: any;
+
+  if (userRole === "admin") {
+    // Admins see EVERYTHING
     countWhereCondition = {};
     whereCondition = { status: finalStatusFilter };
+  } else if (userRole === "Manager") {
+    // Managers: Filter based on team/creator, with optional scope narrowing
+
+    // --- 1. Initialize Default/Comprehensive Scope ---
+    let scopeCondition: any = {
+      [Op.or]: [
+        { assigneeId: { [Op.in]: managerScopeIds } }, // Assigned to team or manager
+        { createdBy: userId }, // Assigned by manager
+      ],
+    };
+
+    // --- 2. Apply Optional Scope Filter (Only if provided) ---
+    if (scopeFilter === "assignedToMe") {
+      scopeCondition = { assigneeId: userId };
+    } else if (scopeFilter === "assignedByMe") {
+      scopeCondition = { createdBy: userId };
+    } else if (scopeFilter === "assignedToTeam") {
+      // Exclude the manager from the team view
+      const teamOnlyIds = subordinateIds.length > 0 ? subordinateIds : [null];
+      scopeCondition = { assigneeId: { [Op.in]: teamOnlyIds } };
+    }
+
+    // --- 3. Finalize Conditions using the determined scopeCondition ---
+    countWhereCondition = {
+      [Op.and]: [
+        scopeCondition,
+        { status: { [Op.notIn]: RESTRICTED_STATUSES } },
+      ],
+    };
+
+    whereCondition = {
+      [Op.and]: [scopeCondition, { status: finalStatusFilter }],
+    };
   } else {
-    // Standard Users:
-    // Count only tasks assigned to them, EXCLUDING restricted statuses
+    // Standard Users: (Logic remains unchanged)
     countWhereCondition = {
       assigneeId: userId,
       status: { [Op.notIn]: RESTRICTED_STATUSES },
     };
-    // Fetch the subset of those tasks based on the specific status filter
     whereCondition = {
       [Op.and]: [{ assigneeId: userId }, { status: finalStatusFilter }],
     };
@@ -176,12 +342,13 @@ const getUserTasks = async (req: Request, res: Response) => {
         "status",
         [sequelize.fn("COUNT", sequelize.col("id")), "count"],
       ],
-      where: countWhereCondition, // Uses the restricted/unrestricted condition
+      where: countWhereCondition,
       group: ["status"],
       raw: true,
+      transaction: t, // Transaction applied
     });
 
-    // Convert the array into a clean object map: { 'pending': 12, 'completed': 50, ... }
+    // Convert the array into a clean object map
     const counts = statusCountsArray.reduce(
       (acc: Record<string, number>, item: any) => {
         acc[item.status] = parseInt(item.count, 10);
@@ -192,29 +359,32 @@ const getUserTasks = async (req: Request, res: Response) => {
 
     // 5. FETCH MAIN TASK LIST
     const tasks = await Task.findAll({
-      where: whereCondition, // Uses the specific status filter
+      where: whereCondition,
       order: [["dueDate", "ASC"]],
       include: [
         { model: User, as: "Assignee", attributes: ["id", "name", "email"] },
         { model: User, as: "Creator", attributes: ["id", "name", "email"] },
       ],
+      transaction: t, // Transaction applied
     });
 
-    // 6. RETURN FINAL RESPONSE with counts
+    // 6. Commit the transaction
+    await t.commit();
+
+    // 7. RETURN FINAL RESPONSE with counts
     return res.status(Messages.TASKS_FETCHED.status).json({
       message: Messages.TASKS_FETCHED.message,
       tasks: tasks,
       count: tasks.length,
-      statusCounts: counts, // The efficient aggregate counts
+      statusCounts: counts,
     });
   } catch (error) {
     console.error("Error fetching user tasks:", error);
-    return res.status(Errors.INTERNAL_ERROR.status).json({
-      error: Errors.INTERNAL_ERROR.error,
-      code: Errors.INTERNAL_ERROR.code,
-    });
+    // Ensure rollback if an error occurred in the try block
+    await t.rollback();
+    return res.status(Errors.INTERNAL_ERROR.status).json(Errors.INTERNAL_ERROR);
   }
-}; // backend/src/controllers/userController.ts
+};
 
 const getDirectEmployeesCont = async (req: Request, res: Response) => {
   const managerId = req.tokenUser!.userId;
@@ -322,7 +492,8 @@ const updateTaskCont = async (req: Request, res: Response) => {
         recipientId: task.assigneeId,
         senderId: userId || null,
         type: "task_updated",
-        Messages: `Task: ${task.title} has been updated. Please check recheck the details.`,
+        message: `Task: ${task.title} has been updated. Please check recheck the details.`,
+        taskId: task.id,
         linkTo: `/tasks/${task.id}`,
       },
       { transaction: t }
@@ -376,7 +547,8 @@ const startTask = async (req: Request, res: Response) => {
         recipientId: task.createdBy,
         senderId: null,
         type: "task_started",
-        message: `Task: ${task.title} has been started.`,
+        message: `Task: ${task.title} has been started, by its assigend user.`,
+        taskId: task.id,
         linkTo: `/tasks/${task.id}`,
       },
       { transaction: t }
@@ -431,11 +603,13 @@ const completeTask = async (req: Request, res: Response) => {
         recipientId: task.createdBy,
         senderId: null,
         type: "task_completed",
-        message: `Task: ${task.title} has been Finished.`,
+        message: `Task: ${task.title} has been completed, by its assigned user.`,
+        taskId: task.id,
         linkTo: `/tasks/${task.id}`,
       },
       { transaction: t }
     );
+
     await t.commit();
 
     return res.status(Messages.TASK_COMPLETED.status).json({
@@ -450,6 +624,52 @@ const completeTask = async (req: Request, res: Response) => {
     });
   }
 };
+const reportTaskCont = async (req: Request, res: Response) => {
+  const taskId = req.params.id;
+  const userId = req.tokenUser!.userId;
+  const reportMessage = req.body.message;
+  if (
+    !taskId ||
+    !userId ||
+    !reportMessage ||
+    reportMessage.trim().length === 0
+  ) {
+    return res.status(Errors.BAD_REQUEST.status).json(Errors.BAD_REQUEST);
+  }
+  const t = await sequelize.transaction();
+  try {
+    const task = await Task.findByPk(taskId);
+    if (!task || task.assigneeId !== userId) {
+      return res.status(Errors.BAD_REQUEST.status).json({
+        error: Errors.BAD_REQUEST.error,
+        code: Errors.BAD_REQUEST.code,
+      });
+    }
+    const notficationReport = await Notification.create(
+      {
+        recipientId: task.createdBy,
+        senderId: userId || null,
+        type: "report_created",
+        message: reportMessage,
+        taskId: task.id,
+        linkTo: `/tasks/${task.id}`,
+      },
+      { transaction: t }
+    );
+    await t.commit();
+    return res.status(Messages.TASK_REPORTED.status).json({
+      message: Messages.TASK_REPORTED.message,
+      code: Messages.TASK_REPORTED.code,
+    });
+  } catch (error) {
+    await t.rollback();
+    console.error("Error reporting task:", error);
+    return res.status(Errors.INTERNAL_ERROR.status).json({
+      error: Errors.INTERNAL_ERROR.error,
+      code: Errors.INTERNAL_ERROR.code,
+    });
+  }
+};
 
 export default {
   CreateTaskCont,
@@ -458,4 +678,5 @@ export default {
   startTask,
   completeTask,
   updateTaskCont,
+  reportTaskCont,
 };

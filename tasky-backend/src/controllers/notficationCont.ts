@@ -6,7 +6,7 @@ import Task from "../models/tasksModel.js";
 import e, { text, type Request, type Response } from "express";
 import "../types/request.js";
 import Notification from "../models/Notification";
-import { Model } from "sequelize";
+import { Model, where } from "sequelize";
 
 const getNotifications = async (req: Request, res: Response) => {
   const recipientId = req.tokenUser!.userId;
@@ -16,7 +16,16 @@ const getNotifications = async (req: Request, res: Response) => {
     const notifications = await Notification.findAll({
       where: { recipientId: recipientId },
       order: [["createdAt", "DESC"]],
-      include: [{ model: Task, as: "Task" }],
+      include: [
+        {
+          model: Task,
+          as: "Task",
+          include: [
+            { model: User, as: "Assignee", attributes: ["id", "name"] },
+            { model: User, as: "Creator", attributes: ["id", "name"] },
+          ],
+        },
+      ],
       limit: limit,
       offset: offset,
     });

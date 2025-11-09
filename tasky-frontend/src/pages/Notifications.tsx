@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Card, Button } from "../components/common/UIComponents";
 import { NavigateFunction } from "../app";
 import { apiService } from "../api/api";
+import { useTaskDetail } from "../context/TaskDetailContext";
 import { Notification } from "../types/user";
 
 interface NotificationsProps {
@@ -13,12 +14,14 @@ export const NotificationsPage: React.FC<NotificationsProps> = ({
   onNavigate,
   onRefreshNotificationCount,
 }) => {
+  const { setSelectedTask } = useTaskDetail();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [markingAsRead, setMarkingAsRead] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalNotifications, setTotalNotifications] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
   const itemsPerPage = 10;
 
   const totalPages = Math.ceil(totalNotifications / itemsPerPage);
@@ -28,6 +31,9 @@ export const NotificationsPage: React.FC<NotificationsProps> = ({
     const fetchNotifications = async () => {
       try {
         setLoading(true);
+        console.log(
+          `📄 [Notifications] Fetching page ${currentPage} (limit: ${itemsPerPage})`
+        );
         const offset = (currentPage - 1) * itemsPerPage;
         const response = await apiService.getNotifications(
           itemsPerPage,
@@ -39,9 +45,12 @@ export const NotificationsPage: React.FC<NotificationsProps> = ({
         // In production, the backend should return total count
         setTotalNotifications(response.notifications.length + offset);
         setError(null);
+        console.log(
+          `✅ [Notifications] Fetched ${response.notifications.length} items`
+        );
       } catch (err: any) {
         setError(err.message);
-        console.error("Error fetching notifications:", err);
+        console.error("❌ [Notifications] Error fetching notifications:", err);
       } finally {
         setLoading(false);
       }
@@ -61,6 +70,13 @@ export const NotificationsPage: React.FC<NotificationsProps> = ({
       // Update UI: Mark all notifications as read
       setNotifications((prevNotifications) =>
         prevNotifications.map((n) => ({ ...n, isRead: true }))
+      );
+
+      // Fetch and update the unread count
+      const countResponse = await apiService.getNotificationCount();
+      setUnreadCount(countResponse.unreadsCount);
+      console.log(
+        `📊 [Notifications] Updated unread count: ${countResponse.unreadsCount}`
       );
 
       // Refresh notification count in Sidebar
@@ -83,14 +99,24 @@ export const NotificationsPage: React.FC<NotificationsProps> = ({
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case "task_due":
-        return "📌";
       case "task_assigned":
         return "📋";
+      case "task_due":
+        return "📌";
+      case "task_started":
+        return "▶️";
+      case "task_completed":
+        return "✅";
+      case "task_updated":
+        return "✏️";
       case "report_created":
         return "📄";
       case "report_resolved":
         return "✓";
+      case "welcome_message":
+        return "👋";
+      case "system":
+        return "⚙️";
       default:
         return "•";
     }
@@ -99,12 +125,24 @@ export const NotificationsPage: React.FC<NotificationsProps> = ({
   const getNotificationColor = (type: string, isRead: boolean) => {
     const baseColor =
       type === "task_due"
-        ? "border-purple-500 bg-purple-50"
+        ? "border-red-500 bg-red-50"
         : type === "task_assigned"
         ? "border-orange-500 bg-orange-50"
-        : type === "report_created"
+        : type === "task_started"
         ? "border-blue-500 bg-blue-50"
-        : "border-green-500 bg-green-50";
+        : type === "task_completed"
+        ? "border-green-500 bg-green-50"
+        : type === "task_updated"
+        ? "border-yellow-500 bg-yellow-50"
+        : type === "report_created"
+        ? "border-purple-500 bg-purple-50"
+        : type === "report_resolved"
+        ? "border-emerald-500 bg-emerald-50"
+        : type === "welcome_message"
+        ? "border-pink-500 bg-pink-50"
+        : type === "system"
+        ? "border-gray-500 bg-gray-50"
+        : "border-gray-500 bg-gray-50";
 
     return isRead ? `${baseColor} opacity-60` : baseColor;
   };
@@ -134,7 +172,14 @@ export const NotificationsPage: React.FC<NotificationsProps> = ({
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Notifications</h1>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Notifications</h1>
+          {unreadCount > 0 && (
+            <p className="text-sm text-gray-600 mt-2">
+              📊 <span className="font-semibold">{unreadCount} unread</span>
+            </p>
+          )}
+        </div>
         {notifications.some((n) => !n.isRead) && (
           <Button
             variant="outline"
@@ -193,7 +238,30 @@ export const NotificationsPage: React.FC<NotificationsProps> = ({
                   className="text-sm py-1 px-3"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onNavigate("TaskList");
+                    // Extract task ID from linkTo (e.g., "/tasks/123" -> "123")
+                    if (notif.linkTo && notif.Task) {
+                      const taskId = notif.linkTo.split("/").pop();
+                      if (taskId) {
+                        // Pass task data through context
+                        console.log(
+                          `� [Notifications] Setting selected task from context:`,
+                          notif.Task
+                        );
+                        setSelectedTask(notif.Task);
+                        onNavigate("TaskDetail", taskId);
+                      }
+                    } else if (notif.linkTo) {
+                      const taskId = notif.linkTo.split("/").pop();
+                      console.warn(
+                        `⚠️ [Notifications] No Task object for notification ${notif.id}`
+                      );
+                      if (taskId) {
+                        onNavigate("TaskDetail", taskId);
+                      }
+                    } else {
+                      // Fallback to TaskList if no linkTo
+                      onNavigate("TaskList");
+                    }
                   }}
                 >
                   View

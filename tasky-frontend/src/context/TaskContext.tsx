@@ -6,6 +6,7 @@ import React, {
   useCallback,
   useMemo,
   ReactNode,
+  useRef,
 } from "react";
 import { apiService } from "../api/api";
 import {
@@ -90,6 +91,7 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(taskReducer, initialTaskState);
   const { user } = useAuth();
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
+  const hasInitialFetch = useRef(false);
 
   // Fetch users for assignment dropdown (Manager only)
   const fetchAvailableUsers = useCallback(async () => {
@@ -214,9 +216,13 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
   );
 
   useEffect(() => {
+    if (hasInitialFetch.current) return; // Skip if already fetched (prevents StrictMode double-call)
+
+    hasInitialFetch.current = true;
+    console.log("📋 [TaskContext] Fetching tasks on mount");
     fetchTasks();
     fetchAvailableUsers();
-  }, [fetchTasks, fetchAvailableUsers]);
+  }, []);
 
   const value: TaskContextType = useMemo(
     () => ({

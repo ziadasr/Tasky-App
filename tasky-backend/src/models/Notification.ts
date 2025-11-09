@@ -13,6 +13,10 @@ class Notification extends Model {
     | "task_due"
     | "report_created"
     | "report_resolved"
+    | "task_started"
+    | "task_completed"
+    | "task_updated"
+    | "welcome_message"
     | "system";
   declare message: string;
   declare linkTo: string | null;
@@ -56,6 +60,7 @@ Notification.init(
         "report_resolved",
         "task_started",
         "task_completed",
+        "task_updated",
         "welcome_message",
         "system"
       ),

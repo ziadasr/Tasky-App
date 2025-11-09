@@ -19,6 +19,7 @@ router.get("/tasks", authenticateUser, Task.getUserTasks);
 router.get("/direct-employees", authenticateUser, Task.getDirectEmployeesCont);
 router.post("/start-task/:id", authenticateUser, Task.startTask);
 router.post("/complete-task/:id", authenticateUser, Task.completeTask);
+router.post("/report-task/:id", authenticateUser, Task.reportTaskCont);
 
 router.put(
   "/update-task/:id",
