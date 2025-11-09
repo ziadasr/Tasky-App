@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useTasks } from "../context/TaskContext";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -9,28 +9,42 @@ import {
   Spinner,
 } from "../components/common/UIComponents";
 import { TaskCard } from "../components/TaskCard";
-import { TASK_STATUSES } from "../types/task.d";
-import { MOCK_USERS } from "../api/mockApi";
 import { NavigateFunction } from "../app";
 
 interface TaskListProps {
   onNavigate: NavigateFunction;
+  initialFilter?: string | null;
 }
 
-export const TaskList: React.FC<TaskListProps> = ({ onNavigate }) => {
-  const { tasks, loading, error, availableUsers, fetchTasks } = useTasks();
-  const { isAdmin } = useAuth();
-  const [filterStatus, setFilterStatus] = useState<string>("");
+export const TaskList: React.FC<TaskListProps> = ({
+  onNavigate,
+  initialFilter,
+}) => {
+  const { tasks, loading, error, fetchTasks } = useTasks();
+  const { user } = useAuth();
+  const [filterStatus, setFilterStatus] = useState<string>(initialFilter || "");
   const [searchTerm, setSearchTerm] = useState<string>("");
 
-  const userMap = useMemo(() => {
-    // Combine mock users and dynamically fetched users for mapping
-    const allUsers = [...MOCK_USERS, ...availableUsers];
-    return allUsers.reduce((acc, user) => {
-      acc[user.id] = user.name;
-      return acc;
-    }, {} as { [key: string]: string });
-  }, [availableUsers]);
+  // Determine available statuses based on user role
+  const availableStatuses = useMemo(() => {
+    if (user?.role === "Manager" || user?.role === "Admin") {
+      // Managers/Admins see: pending, in_progress, scheduled, completed
+      return ["pending", "in_progress", "scheduled", "completed"];
+    } else {
+      // Normal users (Employee/User) see: pending, in_progress, completed
+      return ["pending", "in_progress", "completed"];
+    }
+  }, [user?.role]);
+
+  // Fetch tasks with the initial filter when component mounts or initialFilter changes
+  useEffect(() => {
+    if (initialFilter) {
+      setFilterStatus(initialFilter);
+      fetchTasks(initialFilter as any);
+    } else {
+      fetchTasks();
+    }
+  }, [initialFilter, fetchTasks]);
 
   const filteredTasks = useMemo(() => {
     let result = tasks;
@@ -43,14 +57,14 @@ export const TaskList: React.FC<TaskListProps> = ({ onNavigate }) => {
       const lowerSearch = searchTerm.toLowerCase();
       result = result.filter(
         (t) =>
-          t.name.toLowerCase().includes(lowerSearch) ||
+          t.title.toLowerCase().includes(lowerSearch) ||
           t.description.toLowerCase().includes(lowerSearch) ||
-          userMap[t.assignedToId]?.toLowerCase().includes(lowerSearch)
+          t.Assignee?.name?.toLowerCase().includes(lowerSearch)
       );
     }
 
-    // Simple sorting: To Do first, then In Progress, then Completed
-    const statusOrder = TASK_STATUSES.reduce((acc, status, index) => {
+    // Sort by available statuses
+    const statusOrder = availableStatuses.reduce((acc, status, index) => {
       acc[status] = index;
       return acc;
     }, {} as { [key: string]: number });
@@ -58,11 +72,19 @@ export const TaskList: React.FC<TaskListProps> = ({ onNavigate }) => {
     return result.sort((a, b) => {
       return (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3);
     });
-  }, [tasks, filterStatus, searchTerm, userMap]);
+  }, [tasks, filterStatus, searchTerm, availableStatuses]);
 
-  const statusOptions = [...TASK_STATUSES, "All Statuses"].map((s) => ({
+  // Generate status options based on available statuses
+  const statusOptions = [...availableStatuses, "All Statuses"].map((s) => ({
     value: s === "All Statuses" ? "" : s,
-    label: s,
+    label:
+      s === "All Statuses"
+        ? "All Statuses"
+        : s
+            .replace(/_/g, " ")
+            .split(" ")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" "),
   }));
 
   if (loading) return <Spinner />;
@@ -72,7 +94,7 @@ export const TaskList: React.FC<TaskListProps> = ({ onNavigate }) => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Task List</h1>
-        {isAdmin && (
+        {(user?.role === "Manager" || user?.role === "Admin") && (
           <Button onClick={() => onNavigate("AddTask")}>+ New Task</Button>
         )}
       </div>
@@ -94,7 +116,10 @@ export const TaskList: React.FC<TaskListProps> = ({ onNavigate }) => {
           options={statusOptions}
           className="w-full sm:w-48"
         />
-        <Button variant="secondary" onClick={fetchTasks}>
+        <Button
+          variant="secondary"
+          onClick={() => fetchTasks(filterStatus as any)}
+        >
           Refresh
         </Button>
       </Card>
@@ -103,7 +128,9 @@ export const TaskList: React.FC<TaskListProps> = ({ onNavigate }) => {
         {filteredTasks.length === 0 ? (
           <div className="text-center py-10 text-gray-500 bg-white rounded-xl shadow-md">
             <p className="text-lg">No tasks found matching your criteria.</p>
-            {isAdmin && <p className="text-sm mt-2">Try adding a new task!</p>}
+            {(user?.role === "Manager" || user?.role === "Admin") && (
+              <p className="text-sm mt-2">Try adding a new task!</p>
+            )}
           </div>
         ) : (
           filteredTasks.map((task) => (

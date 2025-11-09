@@ -34,4 +34,39 @@ export const Messages = {
     status: 200,
     message: "Profile completed and password changed successfully",
   },
+  TASK_CREATED: {
+    code: "TASK_CREATED",
+    status: 201,
+    message: "Task created successfully",
+  },
+  TASKS_FETCHED: {
+    code: "TASKS_FETCHED",
+    status: 200,
+    message: "Tasks fetched successfully",
+  },
+  ASSIGNEES_FETCHED: {
+    code: "ASSIGNEES_FETCHED",
+    status: 200,
+    message: "Assignees fetched successfully",
+  },
+  TASK_STARTED: {
+    code: "TASK_STARTED",
+    status: 200,
+    message: "Task started successfully",
+  },
+  TASK_COMPLETED: {
+    code: "TASK_COMPLETED",
+    status: 200,
+    message: "Task completed successfully",
+  },
+  TASK_UPDATED: {
+    code: "TASK_UPDATED",
+    status: 200,
+    message: "Task updated successfully",
+  },
+  NOTIFICATIONS_MARKED_AS_READ: {
+    code: "NOTIFICATIONS_MARKED_AS_READ",
+    status: 200,
+    message: "Notifications marked as read successfully",
+  },
 };

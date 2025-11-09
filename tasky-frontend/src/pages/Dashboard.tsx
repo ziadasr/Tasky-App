@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import { useTasks } from "../context/TaskContext";
 import { useAuth } from "../context/AuthContext";
 import { Card, Button, Spinner } from "../components/common/UIComponents";
-import { Task } from "../types/task.d";
 import { NavigateFunction } from "../app";
 
 interface DashboardProps {
@@ -10,27 +9,22 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
-  const { tasks, loading, error } = useTasks();
-  const { user, isAdmin } = useAuth();
-
-  const userTasks: Task[] = useMemo(
-    () => tasks.filter((t) => t.assignedToId === user?.id),
-    [tasks, user?.id]
-  );
+  const { taskCount, statusCounts, loading, error } = useTasks();
+  const { user } = useAuth();
 
   const stats = useMemo(() => {
-    const allTasks = isAdmin ? tasks : userTasks;
-
-    const total = allTasks.length;
-    const completed = allTasks.filter((t) => t.status === "Completed").length;
-    const progress = allTasks.filter((t) => t.status === "In Progress").length;
-    const todo = allTasks.filter((t) => t.status === "To Do").length;
+    // Use counts directly from API response (statusCounts)
+    const total = taskCount;
+    const scheduled = statusCounts.scheduled || 0;
+    const completed = statusCounts.completed || 0;
+    const progress = statusCounts.in_progress || 0;
+    const pending = statusCounts.pending || 0;
 
     const completionRate =
       total > 0 ? ((completed / total) * 100).toFixed(0) : 0;
 
-    return { total, completed, progress, todo, completionRate };
-  }, [tasks, userTasks, isAdmin]);
+    return { total, scheduled, completed, progress, pending, completionRate };
+  }, [taskCount, statusCounts]);
 
   // TaskCard component defined locally for rendering dashboard stats
   interface TaskCardProps {
@@ -76,7 +70,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       </p>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div
+        className={`grid grid-cols-1 sm:grid-cols-2 ${
+          user.role === "Manager" ? "lg:grid-cols-5" : "lg:grid-cols-4"
+        } gap-6`}
+      >
         <TaskCard
           title="Total Tasks"
           count={stats.total}
@@ -84,22 +82,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           onClick={() => onNavigate("TaskList")}
         />
         <TaskCard
-          title="Completed Tasks"
-          count={stats.completed}
-          bgColor="bg-green-600"
-          onClick={() => onNavigate("TaskList", null, "Completed")}
-        />
-        <TaskCard
           title="In Progress"
           count={stats.progress}
           bgColor="bg-blue-600"
-          onClick={() => onNavigate("TaskList", null, "In Progress")}
+          onClick={() => onNavigate("TaskList", null, "in_progress")}
         />
         <TaskCard
-          title="To Do"
-          count={stats.todo}
+          title="Pending"
+          count={stats.pending}
           bgColor="bg-red-600"
-          onClick={() => onNavigate("TaskList", null, "To Do")}
+          onClick={() => onNavigate("TaskList", null, "pending")}
+        />
+        {user.role === "Manager" && (
+          <TaskCard
+            title="Scheduled"
+            count={stats.scheduled}
+            bgColor="bg-purple-600"
+            onClick={() => onNavigate("TaskList", null, "scheduled")}
+          />
+        )}
+        <TaskCard
+          title="Completed Tasks"
+          count={stats.completed}
+          bgColor="bg-green-600"
+          onClick={() => onNavigate("TaskList", null, "completed")}
         />
       </div>
 

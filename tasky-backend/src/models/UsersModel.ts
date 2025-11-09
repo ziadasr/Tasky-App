@@ -1,6 +1,7 @@
 // userModel.ts
 import { DataTypes, Model } from "sequelize";
 import sequelize from "../utils/sequelize";
+import Task from "./tasksModel";
 
 class User extends Model {
   declare id: number;
@@ -82,6 +83,7 @@ User.init(
       allowNull: false,
     },
   },
+
   {
     sequelize,
     modelName: "User",

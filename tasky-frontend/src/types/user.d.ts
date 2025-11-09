@@ -65,3 +65,48 @@ export interface VerificationSuccessPayload {
   nextStep: "CHANGE_PASSWORD";
   code: string;
 }
+
+// Task payload types
+export interface TasksSuccessPayload {
+  message: string;
+  count: number;
+  tasks: Task[];
+  statusCounts: Record<string, number>; // e.g., { pending: 12, in_progress: 5, completed: 50 }
+}
+
+export interface TaskCreatedPayload {
+  message: string;
+  task: Task;
+}
+
+// Notification types
+export interface Notification {
+  id: number;
+  recipientId: number;
+  senderId: number | null;
+  type:
+    | "task_assigned"
+    | "task_due"
+    | "report_created"
+    | "report_resolved"
+    | "system";
+  message: string;
+  linkTo: string | null;
+  isRead: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationsPayload {
+  notifications: Notification[];
+}
+
+export interface NotificationCountPayload {
+  unreadsCount: number;
+}
+
+export interface NotificationMarkReadPayload {
+  message: string;
+  code: string;
+  rowsMarked: number;
+}

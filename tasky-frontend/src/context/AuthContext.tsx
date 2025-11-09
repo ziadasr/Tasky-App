@@ -57,28 +57,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
+      console.log("🔐 Attempting login for email:", email);
       const response = await apiService.login(email, password);
 
       // Backend returns user object in both cases (200 and 202)
+      console.log("✅ Login response received:", response);
       setUser(response.user);
+
+      // Store user data in localStorage
+      console.log("💾 Storing user in localStorage:", response.user);
+      localStorage.setItem("currentUser", JSON.stringify(response.user));
 
       // Check if password change is required
       if (response.code === "PASSWORD_CHANGE_REQUIRED") {
+        console.log("⚠️ Password change required");
         setActionRequired("PASSWORD_CHANGE_REQUIRED");
         setIsVerified(false); // Reset verification state on new login
         localStorage.setItem("actionRequired", "PASSWORD_CHANGE_REQUIRED");
         localStorage.setItem("isVerified", "false"); // Persist verification state
       } else {
+        console.log("✅ Login successful, no password change required");
         setActionRequired(null);
         setIsVerified(false);
         localStorage.removeItem("actionRequired");
         localStorage.removeItem("isVerified");
       }
 
-      localStorage.setItem("currentUser", JSON.stringify(response.user));
-
       return true;
     } catch (err) {
+      console.error("❌ Login failed:", err);
       setError(err instanceof Error ? err.message : "Login failed");
       return false;
     } finally {
@@ -173,28 +180,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   useEffect(() => {
+    // Restore user data from localStorage on component mount
     const storedUser = localStorage.getItem("currentUser");
     const storedActionRequired = localStorage.getItem("actionRequired");
     const storedIsVerified = localStorage.getItem("isVerified");
 
+    console.log("🔄 AuthContext useEffect: Restoring from localStorage");
+    console.log("📦 storedUser:", storedUser);
+    console.log("📦 storedActionRequired:", storedActionRequired);
+    console.log("📦 storedIsVerified:", storedIsVerified);
+
     if (storedUser) {
       try {
         const parsedUser: User = JSON.parse(storedUser);
+        console.log("✅ User restored from localStorage:", parsedUser);
         setUser(parsedUser);
       } catch (e) {
-        console.error("Failed to parse user from localStorage", e);
+        console.error("❌ Failed to parse user from localStorage", e);
         localStorage.removeItem("currentUser");
       }
+    } else {
+      console.log("⚠️ No stored user found in localStorage");
     }
 
     if (storedActionRequired) {
+      console.log("✅ Action required restored:", storedActionRequired);
       setActionRequired(storedActionRequired);
     }
 
     // Restore verification state from localStorage
     if (storedIsVerified === "true") {
       setIsVerified(true);
-      console.log("🔄 Restored isVerified=true from localStorage");
+      console.log("✅ Restored isVerified=true from localStorage");
     } else {
       setIsVerified(false);
     }

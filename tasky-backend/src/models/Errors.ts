@@ -71,11 +71,32 @@ export const Errors = {
   NOT_AUTH: {
     status: 403,
     code: "NOT_AUTHORIZED",
-    error: "You do not have permission to access this resource.",
+    error:
+      "You do not have permission to access this resource or perform this action.",
   },
   VERIFICATION_FAILED: {
     status: 400,
     code: "VERIFICATION_FAILED",
     error: "Verification failed. The provided code is incorrect or expired.",
+  },
+  NOT_FOUND: {
+    status: 404,
+    code: "NOT_FOUND",
+    error: "The requested resource was not found.",
+  },
+  TASK_NOT_STARTED_YET: {
+    status: 400,
+    code: "TASK_NOT_STARTED_YET",
+    error: "The task has not been started yet.",
+  },
+  TASK_NOT_RERADY_TO_START: {
+    status: 400,
+    code: "TASK_NOT_READY_TO_START",
+    error: "The task is not ready to be started, not in 'pending' status.",
+  },
+  COMPLETED_TASKS_NON_EDITABLE: {
+    status: 400,
+    code: "COMPLETED_TASKS_NON_EDITABLE",
+    error: "Completed tasks cannot be edited.",
   },
 };

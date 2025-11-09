@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import { Task, TaskStatus } from "../types/task";
 import { Button, Card } from "./common/UIComponents";
 import { useAuth } from "../context/AuthContext";
-import { MOCK_USERS } from "../api/mockApi";
 import { useTasks } from "../context/TaskContext";
 import { NavigateFunction } from "../app";
 
@@ -11,69 +10,177 @@ interface TaskCardProps {
   onNavigate: NavigateFunction;
 }
 
+// Helper to determine base color class for the left status bar
+const getStatusColor = (status: TaskStatus): string => {
+  switch (status) {
+    case "completed":
+      return "border-green-500";
+    case "in_progress":
+      return "border-blue-500";
+    case "pending":
+    case "due":
+      return "border-orange-500"; // Use orange/red for urgency
+    case "scheduled":
+      return "border-yellow-500";
+    case "archived":
+    default:
+      return "border-gray-300";
+  }
+};
+
+// Helper for status text color (for the badge)
+const getStatusBadgeColor = (status: TaskStatus): string => {
+  switch (status) {
+    case "completed":
+      return "bg-green-100 text-green-800";
+    case "in_progress":
+      return "bg-blue-100 text-blue-800";
+    case "pending":
+    case "due":
+      return "bg-red-100 text-red-800";
+    case "scheduled":
+      return "bg-yellow-100 text-yellow-800";
+    case "archived":
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
+};
+
 export const TaskCard: React.FC<TaskCardProps> = ({ task, onNavigate }) => {
-  const { isAdmin } = useAuth();
-  const { availableUsers } = useTasks();
+  const { isAdmin, user } = useAuth();
+  const { startTask, completeTask } = useTasks();
+  const isManagerOrAdmin =
+    user?.role === "Manager" || user?.role === "Admin" || isAdmin;
 
-  const userMap = useMemo(() => {
-    // Combine mock users and available users for mapping
-    const allUsers = [...MOCK_USERS, ...availableUsers];
-    return allUsers.reduce((acc, user) => {
-      acc[user.id] = user.name;
-      return acc;
-    }, {} as { [key: string]: string });
-  }, [availableUsers]);
+  const assigneeName = useMemo(
+    () => task.Assignee?.name || "N/A",
+    [task.Assignee]
+  );
+  const creatorName = useMemo(
+    () => task.Creator?.name || "N/A",
+    [task.Creator]
+  );
 
-  const getStatusColor = (status: TaskStatus): string => {
-    switch (status) {
-      case "Completed":
-        return "bg-green-100 text-green-800 border-green-300";
-      case "In Progress":
-        return "bg-blue-100 text-blue-800 border-blue-300";
-      case "To Do":
-        return "bg-red-100 text-red-800 border-red-300";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+  const statusBorderColor = getStatusColor(task.status);
+  const statusBadgeColor = getStatusBadgeColor(task.status);
+  const formattedDueDate = new Date(task.dueDate).toLocaleDateString();
+  const formattedCompletedDate = task.completedAt
+    ? new Date(task.completedAt).toLocaleDateString()
+    : null;
 
   return (
-    <Card className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 p-4 border border-gray-100 transition-all duration-200 hover:border-indigo-300 hover:shadow-lg">
-      <div className="flex-1 min-w-0 mb-3 sm:mb-0">
-        <h3 className="text-xl font-semibold text-gray-900 truncate">
-          {task.name}
-        </h3>
-        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-          {task.description}
-        </p>
-        <div className="flex flex-wrap items-center text-xs mt-2 space-x-3 text-gray-500">
-          <span>
-            Assigned to:{" "}
-            <span className="font-medium text-gray-700">
-              {userMap[task.assignedToId] || "N/A"}
+    // Added border-l-8 (left border width) and statusBorderColor
+    <Card
+      className={`flex flex-col mb-4 p-5 border border-gray-200 shadow-md transition-shadow hover:shadow-lg ${statusBorderColor} border-l-8`}
+    >
+      {/* 1. Main Content Area */}
+      <div className="flex justify-between items-start pb-3">
+        <div className="flex-1 min-w-0 pr-4">
+          <h3 className="text-xl font-bold text-gray-900 leading-snug">
+            {task.title}
+          </h3>
+          <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+            {task.description}
+          </p>
+        </div>
+
+        {/* Status Badge (Top Right) */}
+        <span
+          className={`px-3 py-1 text-xs font-semibold rounded-full uppercase flex-shrink-0 ${statusBadgeColor}`}
+        >
+          {task.status.split("_").join(" ")}
+        </span>
+      </div>
+
+      {/* Divider Line */}
+      <hr className="my-3 border-gray-100" />
+
+      {/* 2. Footer: Metadata and Actions */}
+      <div className="flex justify-between items-center mt-1">
+        {/* Metadata (Left Side Footer) */}
+        <div className="flex flex-wrap items-center text-sm space-x-4 text-gray-500">
+          <span className="text-sm text-gray-700">
+            {isManagerOrAdmin ? "Created by:" : "Assigned by:"}{" "}
+            <span className="font-semibold text-gray-800">
+              {isManagerOrAdmin ? creatorName : assigneeName}
             </span>
           </span>
-          <span className="hidden sm:inline-block">|</span>
-          <span>Due: {task.dueDate}</span>
+          <span className="flex items-center space-x-1">
+            <svg
+              className="w-4 h-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              ></path>
+            </svg>
+            <span className="font-semibold text-gray-700">
+              {task.status === "completed" && formattedCompletedDate
+                ? `Completed: ${formattedCompletedDate}`
+                : `Due: ${formattedDueDate}`}
+            </span>
+          </span>
         </div>
-      </div>
-      <div className="flex flex-col items-start sm:items-end space-y-2 sm:space-y-0 sm:space-x-3 sm:flex-row sm:ml-4">
-        <span
-          className={`px-3 py-1 text-xs font-semibold rounded-full border ${getStatusColor(
-            task.status
-          )}`}
-        >
-          {task.status}
-        </span>
-        {isAdmin && (
-          <Button
-            variant="outline"
-            className="py-1 px-3 text-sm"
-            onClick={() => onNavigate("EditTask", task.id)}
-          >
-            Edit
-          </Button>
-        )}
+
+        {/* Action Buttons (Right Side Footer) */}
+        <div className="flex space-x-2 flex-shrink-0">
+          {/* Manager/Admin Edit Button - NOT for completed tasks */}
+          {isManagerOrAdmin && task.status !== "completed" && (
+            <Button
+              variant="outline"
+              className="py-2 px-4 text-sm"
+              onClick={() => onNavigate("EditTask", task.id)}
+            >
+              Edit
+            </Button>
+          )}
+
+          {/* Standard User Actions (for 'pending' tasks) */}
+          {!isManagerOrAdmin && task.status === "pending" && (
+            <>
+              <Button
+                variant="secondary"
+                className="py-2 px-4 text-sm"
+                onClick={() => console.log("Report issue:", task.id)}
+              >
+                Report Issue
+              </Button>
+              <Button
+                variant="primary"
+                className="py-2 px-4 text-sm"
+                onClick={() => startTask(task.id)}
+              >
+                Start Task Now
+              </Button>
+            </>
+          )}
+
+          {/* Standard User Actions (for 'in_progress' tasks) */}
+          {!isManagerOrAdmin && task.status === "in_progress" && (
+            <>
+              <Button
+                variant="secondary"
+                className="py-2 px-4 text-sm"
+                onClick={() => console.log("Report issue:", task.id)}
+              >
+                Report Issue
+              </Button>
+              <Button
+                variant="danger"
+                className="py-2 px-4 text-sm"
+                onClick={() => completeTask(task.id)}
+              >
+                End Task
+              </Button>
+            </>
+          )}
+        </div>
       </div>
     </Card>
   );

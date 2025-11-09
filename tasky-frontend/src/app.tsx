@@ -13,6 +13,7 @@ import { RegisterPage } from "./pages/Register";
 import { TaskFormPage } from "./pages/TaskForm";
 import { ChangePassword } from "./pages/ChangePassword";
 import { VerifyCode } from "./pages/VerifyCode";
+import { NotificationsPage } from "./pages/Notifications";
 import { Layout } from "./components/layout/Layout";
 import { TaskProvider } from "./context/TaskContext";
 import { Spinner, Button } from "./components/common/UIComponents";
@@ -26,7 +27,8 @@ export type AppPath =
   | "EditTask"
   | "Register"
   | "ChangePassword"
-  | "VerifyCode";
+  | "VerifyCode"
+  | "Notifications";
 
 // Navigation function type that all components should use
 export type NavigateFunction = (
@@ -164,7 +166,10 @@ const TaskManagerApp: React.FC = () => {
           <ProtectedRoute
             allowedRoles={["Admin", "User", "Employee", "Manager"]}
           >
-            <TaskList onNavigate={handleNavigate} />
+            <TaskList
+              onNavigate={handleNavigate}
+              initialFilter={routeParams.filterStatus}
+            />
           </ProtectedRoute>
         );
       case "AddTask":
@@ -204,6 +209,25 @@ const TaskManagerApp: React.FC = () => {
             allowedRoles={["Admin", "User", "Employee", "Manager"]}
           >
             <ChangePassword onNavigate={handleNavigate} />
+          </ProtectedRoute>
+        );
+      case "Notifications":
+        return (
+          <ProtectedRoute
+            allowedRoles={["Admin", "User", "Employee", "Manager"]}
+          >
+            <NotificationsPage
+              onNavigate={handleNavigate}
+              onRefreshNotificationCount={() => {
+                // Trigger a refresh of notification count
+                // This will be handled by the Sidebar component
+                // We use a simple approach: dispatch an event or call a function
+                // For now, we'll use window to communicate
+                window.dispatchEvent(
+                  new CustomEvent("refreshNotificationCount")
+                );
+              }}
+            />
           </ProtectedRoute>
         );
       default:

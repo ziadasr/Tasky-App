@@ -13,7 +13,9 @@ import {
   generateWelcomeEmail,
   generateVerificationCodeEmail,
 } from "../templates/emailTemplates.js";
+
 import { error } from "console";
+import Notification from "../models/Notification.js";
 //in the bottom of the file u will find the expected req of each middleware
 
 //*last edit user logs in has to complete some fields (city- phone-number-dateofbirth)
@@ -90,7 +92,7 @@ const registrationContbyAdmin = async (req: Request, res: Response) => {
     const encryptedVerificationCode = bcrypt.hashSync(verificationCodeSha, 10);
 
     // add the new user to the database
-    await User.create(
+    const newUser = await User.create(
       {
         name: name,
         email: email.toLowerCase(),
@@ -140,7 +142,16 @@ const registrationContbyAdmin = async (req: Request, res: Response) => {
     //   );
     //   // Continue with registration even if email fails
     // }
-
+    //!not tested yet
+    const notificationForNewUser = await Notification.create(
+      {
+        recipientId: newUser.id,
+        senderId: null,
+        type: "welcome_message",
+        message: `Welcome to the team, ${newUser.name}!`,
+      },
+      { transaction: transaction }
+    );
     await transaction.commit();
 
     return res.status(Messages.USER_REGISTERED.status).json({

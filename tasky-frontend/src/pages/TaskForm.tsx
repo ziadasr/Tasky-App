@@ -8,7 +8,6 @@ import {
   Button,
   Spinner,
 } from "../components/common/UIComponents";
-import { Task, TASK_STATUSES, TaskStatus } from "../types/task.d";
 import { NavigateFunction } from "../app";
 
 interface TaskFormProps {
@@ -17,26 +16,31 @@ interface TaskFormProps {
 }
 
 interface TaskFormData {
-  name: string;
+  title: string;
   description: string;
+  priority: "low" | "medium" | "high";
   dueDate: string;
-  status: TaskStatus;
-  assignedToId: string;
+  scheduledRunTime: string;
+  assigneeId: string;
+  isRecurring: boolean;
 }
 
 const initialFormData: TaskFormData = {
-  name: "",
+  title: "",
   description: "",
+  priority: "medium",
   dueDate: "",
-  status: TASK_STATUSES[0],
-  assignedToId: "",
+  scheduledRunTime: "",
+  assigneeId: "",
+  isRecurring: false,
 };
 
 export const TaskFormPage: React.FC<TaskFormProps> = ({
   onNavigate,
   taskId,
 }) => {
-  const { saveTask, getTaskById, availableUsers, fetchTasks } = useTasks();
+  const { saveTask, updateTask, getTaskById, availableUsers, fetchTasks } =
+    useTasks();
   const { user } = useAuth();
   const [formData, setFormData] = useState<TaskFormData>(initialFormData);
   const [loading, setLoading] = useState<boolean>(false);
@@ -48,14 +52,22 @@ export const TaskFormPage: React.FC<TaskFormProps> = ({
     if (isEdit && taskId) {
       const taskToEdit = getTaskById(taskId);
       if (taskToEdit) {
-        setFormData(taskToEdit as TaskFormData);
+        setFormData({
+          title: taskToEdit.title || "",
+          description: taskToEdit.description || "",
+          priority:
+            (taskToEdit.priority as "low" | "medium" | "high") || "medium",
+          dueDate: taskToEdit.dueDate || "",
+          scheduledRunTime: taskToEdit.scheduledRunTime || "",
+          assigneeId: String(taskToEdit.assigneeId || ""),
+          isRecurring: taskToEdit.isRecurring || false,
+        });
       }
     } else {
-      // Set default assignment to self for Admin when adding, if no other users are available
+      // Set default assignment to first available user
       setFormData((prev) => ({
         ...prev,
-        assignedToId: String(availableUsers[0]?.id || user?.id || ""),
-        status: TASK_STATUSES[0],
+        assigneeId: String(availableUsers[0]?.id || user?.id || ""),
       }));
     }
   }, [taskId, isEdit, getTaskById, user?.id, availableUsers]);
@@ -77,17 +89,63 @@ export const TaskFormPage: React.FC<TaskFormProps> = ({
     setError(null);
 
     try {
-      const taskToSave: Partial<Task> & TaskFormData = {
-        ...formData,
-        id: taskId || undefined, // Add ID for update
-        status: formData.status as TaskStatus, // Ensure status is correctly typed
+      // Validate required fields
+      if (
+        !formData.title ||
+        !formData.description ||
+        !formData.priority ||
+        !formData.dueDate ||
+        !formData.scheduledRunTime ||
+        !formData.assigneeId
+      ) {
+        setError("Please fill in all required fields.");
+        setLoading(false);
+        return;
+      }
+
+      // Validate that scheduledRunTime is not in the past (skip for editing)
+      if (!isEdit && new Date(formData.scheduledRunTime) < new Date()) {
+        setError("Scheduled run time cannot be in the past.");
+        setLoading(false);
+        return;
+      }
+
+      // Validate that dueDate is after scheduledRunTime (skip for editing)
+      if (
+        !isEdit &&
+        new Date(formData.dueDate) <= new Date(formData.scheduledRunTime)
+      ) {
+        setError("Due date must be after the scheduled run time.");
+        setLoading(false);
+        return;
+      }
+
+      // Create payload matching backend expectations
+      const taskPayload = {
+        title: formData.title,
+        description: formData.description,
+        priority: formData.priority,
+        dueDate: formData.dueDate,
+        scheduledRunTime: formData.scheduledRunTime,
+        assigneeId: formData.assigneeId,
+        isRecurring: formData.isRecurring,
       };
 
-      await saveTask(taskToSave);
+      if (isEdit && taskId) {
+        // Update existing task
+        await updateTask(taskId, taskPayload);
+      } else {
+        // Create new task
+        await saveTask(taskPayload);
+      }
       await fetchTasks(); // Refresh list immediately
       onNavigate("TaskList");
     } catch (err) {
-      setError("Failed to save task. Please try again.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to save task. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -98,7 +156,11 @@ export const TaskFormPage: React.FC<TaskFormProps> = ({
     label: `${u.name} (${u.email})`,
   }));
 
-  const statusOptions = TASK_STATUSES.map((s) => ({ value: s, label: s }));
+  const priorityOptions = [
+    { value: "low", label: "Low" },
+    { value: "medium", label: "Medium" },
+    { value: "high", label: "High" },
+  ];
 
   return (
     <div>
@@ -108,9 +170,9 @@ export const TaskFormPage: React.FC<TaskFormProps> = ({
       <Card className="max-w-3xl">
         <form onSubmit={handleSubmit}>
           <Input
-            label="Task Name"
-            id="name"
-            value={formData.name}
+            label="Task Title"
+            id="title"
+            value={formData.title}
             onChange={handleChange}
             placeholder="e.g., Finalize Q4 Budget"
             required
@@ -133,6 +195,24 @@ export const TaskFormPage: React.FC<TaskFormProps> = ({
             ></textarea>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
+            <Select
+              label="Priority"
+              id="priority"
+              value={formData.priority}
+              onChange={handleChange}
+              options={priorityOptions}
+              required
+            />
+            <Input
+              label="Scheduled Run Time"
+              id="scheduledRunTime"
+              type="datetime-local"
+              value={formData.scheduledRunTime}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
             <Input
               label="Due Date"
               id="dueDate"
@@ -142,22 +222,34 @@ export const TaskFormPage: React.FC<TaskFormProps> = ({
               required
             />
             <Select
-              label="Status"
-              id="status"
-              value={formData.status}
+              label="Assigned To"
+              id="assigneeId"
+              value={formData.assigneeId}
               onChange={handleChange}
-              options={statusOptions}
+              options={userOptions}
               required
             />
           </div>
-          <Select
-            label="Assigned To"
-            id="assignedToId"
-            value={formData.assignedToId}
-            onChange={handleChange}
-            options={userOptions}
-            required
-          />
+          <div className="mb-4 flex items-center">
+            <input
+              type="checkbox"
+              id="isRecurring"
+              checked={formData.isRecurring}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  isRecurring: e.target.checked,
+                }))
+              }
+              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+            />
+            <label
+              htmlFor="isRecurring"
+              className="ml-2 text-sm font-medium text-gray-700"
+            >
+              Recurring Task
+            </label>
+          </div>
 
           {error && (
             <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">
