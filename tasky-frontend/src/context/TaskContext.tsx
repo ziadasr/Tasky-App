@@ -111,12 +111,27 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
 
   // Fetch tasks based on role
   const fetchTasks = useCallback(
-    async (status?: string) => {
+    async (
+      status?:
+        | string
+        | {
+            status?: string;
+            scope?: "assignedToMe" | "assignedByMe" | "assignedToTeam";
+          }
+    ) => {
       if (!user) return;
 
       dispatch({ type: "FETCH_START" });
       try {
-        const response = await apiService.getTasks(status);
+        // Support both old (string) and new (object) API signatures for backward compatibility
+        let filters;
+        if (typeof status === "string") {
+          filters = { status };
+        } else {
+          filters = status;
+        }
+
+        const response = await apiService.getTasks(filters);
         dispatch({
           type: "FETCH_SUCCESS",
           payload: response.tasks,
@@ -218,11 +233,23 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
   useEffect(() => {
     if (hasInitialFetch.current) return; // Skip if already fetched (prevents StrictMode double-call)
 
+    // Skip automatic fetch for managers/admins (they use ManagerTaskView instead)
+    if (user?.role === "Manager" || user?.role === "Admin") {
+      console.log(
+        "⏭️  [TaskContext] Skipping auto-fetch for",
+        user.role,
+        "- they use ManagerTaskView"
+      );
+      hasInitialFetch.current = true;
+      fetchAvailableUsers();
+      return;
+    }
+
     hasInitialFetch.current = true;
-    console.log("📋 [TaskContext] Fetching tasks on mount");
+    console.log("📋 [TaskContext] Fetching tasks on mount for", user?.role);
     fetchTasks();
     fetchAvailableUsers();
-  }, []);
+  }, [user?.role, fetchTasks]);
 
   const value: TaskContextType = useMemo(
     () => ({

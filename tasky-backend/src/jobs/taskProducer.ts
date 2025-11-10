@@ -1,7 +1,24 @@
 import { Queue } from "bullmq";
-import { calculateDelay } from "../utils/dateUtils.js"; //the func to calc delay in ms
+import { calculateDelay } from "../utils/dateUtils.js";
+//the func to calc delay in ms
 //this file is responsible for producing/scheduling jobs to the redis queue
 // Define the connection options using environment variables
+/**
+1. Manager creates task: scheduledRunTime = "Dec 12, 3:00 PM"
+   ↓
+2. Producer adds job to Redis queue with 24-hour delay
+   ↓
+3. Redis waits 24 hours silently
+   ↓
+4. At 3:00 PM Dec 12, Redis triggers the job
+   ↓
+5. Worker picks up job and calls activateTaskInDB(taskId)
+   ↓
+6. Task status changes: "scheduled" → "pending"
+   ↓
+7. Employee sees the task on their dashboard and can start working
+ */
+
 const connection = {
   host: process.env.REDIS_HOST,
   port: parseInt(process.env.REDIS_PORT || "6379", 10),

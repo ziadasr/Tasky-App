@@ -1,7 +1,8 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useTasks } from "../context/TaskContext";
 import { useAuth } from "../context/AuthContext";
 import { Card, Button, Spinner } from "../components/common/UIComponents";
+import { ManagerTaskView } from "../components/ManagerTaskView";
 import { NavigateFunction } from "../app";
 
 interface DashboardProps {
@@ -9,8 +10,20 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
-  const { taskCount, statusCounts, loading, error } = useTasks();
   const { user } = useAuth();
+  const [managerTab, setManagerTab] = useState<"assignedToMe" | "assignedByMe">(
+    "assignedToMe"
+  );
+
+  // Only use TaskContext for employees (managers/admins use ManagerTaskView)
+  const { taskCount, statusCounts, loading, error } = useTasks();
+
+  // Skip TaskContext fetching for managers and admins
+  useEffect(() => {
+    if (user?.role === "Manager" || user?.role === "Admin") {
+      console.log("⏭️  [Dashboard] Skipping TaskContext fetch for", user.role);
+    }
+  }, [user?.role]);
 
   const stats = useMemo(() => {
     // Use counts directly from API response (statusCounts)
@@ -66,71 +79,103 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       <p className="text-gray-500 mb-8">
         {user.role === "Manager"
           ? "Manager Dashboard: Manage your team's tasks."
+          : user.role === "Admin"
+          ? "Admin Dashboard: Manage all tasks and users."
           : "Employee Dashboard: View your assigned tasks."}
       </p>
 
-      {/* Stats Cards */}
-      <div
-        className={`grid grid-cols-1 sm:grid-cols-2 ${
-          user.role === "Manager" ? "lg:grid-cols-5" : "lg:grid-cols-4"
-        } gap-6`}
-      >
-        <TaskCard
-          title="Total Tasks"
-          count={stats.total}
-          bgColor="bg-yellow-600"
-          onClick={() => onNavigate("TaskList")}
-        />
-        <TaskCard
-          title="In Progress"
-          count={stats.progress}
-          bgColor="bg-blue-600"
-          onClick={() => onNavigate("TaskList", null, "in_progress")}
-        />
-        <TaskCard
-          title="Pending"
-          count={stats.pending}
-          bgColor="bg-red-600"
-          onClick={() => onNavigate("TaskList", null, "pending")}
-        />
-        {user.role === "Manager" && (
-          <TaskCard
-            title="Scheduled"
-            count={stats.scheduled}
-            bgColor="bg-purple-600"
-            onClick={() => onNavigate("TaskList", null, "scheduled")}
-          />
-        )}
-        <TaskCard
-          title="Completed Tasks"
-          count={stats.completed}
-          bgColor="bg-green-600"
-          onClick={() => onNavigate("TaskList", null, "completed")}
-        />
-      </div>
-
-      {/* Completion Rate */}
-      <Card className="mt-8">
-        <h2 className="text-xl font-semibold mb-4">Completion Rate</h2>
-        <div className="w-full bg-gray-200 rounded-full h-4">
-          <div
-            className="bg-indigo-500 h-4 rounded-full transition-all duration-500 ease-out"
-            style={{ width: `${stats.completionRate}%` }}
-          ></div>
+      {/* Admin View */}
+      {user.role === "Admin" && (
+        <div className="mb-8">
+          <ManagerTaskView scope="all" onNavigate={onNavigate} />
         </div>
-        <p className="text-3xl font-bold text-indigo-600 mt-3">
-          {stats.completionRate}%
-        </p>
-        <p className="text-sm text-gray-500 mt-1">
-          {stats.completed} out of {stats.total} tasks completed.
-        </p>
-      </Card>
+      )}
+
+      {/* Manager Tabs */}
+      {user.role === "Manager" && (
+        <div className="mb-6 flex gap-2 border-b border-gray-200">
+          <button
+            onClick={() => setManagerTab("assignedToMe")}
+            className={`px-4 py-3 font-medium transition-colors ${
+              managerTab === "assignedToMe"
+                ? "text-indigo-600 border-b-2 border-indigo-600"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            📥 Tasks Assigned to Me
+          </button>
+          <button
+            onClick={() => setManagerTab("assignedByMe")}
+            className={`px-4 py-3 font-medium transition-colors ${
+              managerTab === "assignedByMe"
+                ? "text-indigo-600 border-b-2 border-indigo-600"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            📤 Tasks I Created
+          </button>
+        </div>
+      )}
+
+      {/* Manager Task View */}
+      {user.role === "Manager" ? (
+        <div className="mb-8">
+          <ManagerTaskView scope={managerTab} onNavigate={onNavigate} />
+        </div>
+      ) : user.role === "Admin" ? null : (
+        <>
+          {/* Stats Cards for Non-Managers */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <TaskCard
+              title="Total Tasks"
+              count={stats.total}
+              bgColor="bg-yellow-600"
+              onClick={() => onNavigate("TaskList")}
+            />
+            <TaskCard
+              title="In Progress"
+              count={stats.progress}
+              bgColor="bg-blue-600"
+              onClick={() => onNavigate("TaskList", null, "in_progress")}
+            />
+            <TaskCard
+              title="Pending"
+              count={stats.pending}
+              bgColor="bg-red-600"
+              onClick={() => onNavigate("TaskList", null, "pending")}
+            />
+            <TaskCard
+              title="Completed Tasks"
+              count={stats.completed}
+              bgColor="bg-green-600"
+              onClick={() => onNavigate("TaskList", null, "completed")}
+            />
+          </div>
+
+          {/* Completion Rate */}
+          <Card className="mt-8">
+            <h2 className="text-xl font-semibold mb-4">Completion Rate</h2>
+            <div className="w-full bg-gray-200 rounded-full h-4">
+              <div
+                className="bg-indigo-500 h-4 rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${stats.completionRate}%` }}
+              ></div>
+            </div>
+            <p className="text-3xl font-bold text-indigo-600 mt-3">
+              {stats.completionRate}%
+            </p>
+            <p className="text-sm text-gray-500 mt-1">
+              {stats.completed} out of {stats.total} tasks completed.
+            </p>
+          </Card>
+        </>
+      )}
 
       {/* Quick Actions */}
       <Card className="mt-8">
         <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
         <div className="flex flex-wrap gap-4">
-          {user.role === "Manager" && (
+          {(user.role === "Manager" || user.role === "Admin") && (
             <>
               <Button variant="primary" onClick={() => onNavigate("AddTask")}>
                 Create New Task

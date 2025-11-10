@@ -197,12 +197,29 @@ export const apiService = {
     }
   },
 
-  // Get user tasks (with optional status filter)
-  getTasks: async (status?: string): Promise<TasksSuccessPayload> => {
+  // Get user tasks (with optional status/scope filters)
+  getTasks: async (filters?: {
+    status?: string;
+    scope?: "assignedToMe" | "assignedByMe" | "assignedToTeam" | "all";
+  }): Promise<TasksSuccessPayload> => {
     try {
-      const url = status
-        ? `/api/auth/tasks?status=${status}`
-        : "/api/auth/tasks";
+      let url = "/api/auth/tasks";
+      const params = new URLSearchParams();
+
+      if (typeof filters === "string") {
+        // Legacy: if filters is a string, treat it as status
+        params.append("status", filters);
+      } else if (filters) {
+        if (filters.status) params.append("status", filters.status);
+        // For "all" scope, don't send scope param (backend will default to all for admins)
+        if (filters.scope && filters.scope !== "all")
+          params.append("scope", filters.scope);
+      }
+
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+
       const response = await axiosInstance.get<TasksSuccessPayload>(url);
       return response.data;
     } catch (error: any) {

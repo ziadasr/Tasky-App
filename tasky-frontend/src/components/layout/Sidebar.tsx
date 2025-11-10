@@ -4,6 +4,9 @@ import { Button } from "../common/UIComponents";
 import { NavigateFunction, AppPath } from "../../app";
 import { apiService } from "../../api/api";
 
+// Module-level ref to track if notification count has been fetched globally
+const globalNotificationFetchRef = { current: false };
+
 interface SidebarProps {
   onNavigate: NavigateFunction;
 }
@@ -11,57 +14,79 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
   const { user, logout } = useAuth();
   const [notificationCount, setNotificationCount] = useState(0);
-  const hasInitialFetch = useRef(false);
+  const isFetchingRef = useRef(false);
 
   // Fetch notification count on mount and when event is triggered
   useEffect(() => {
-    // Skip if already fetched (prevents StrictMode double-call)
-    if (hasInitialFetch.current) {
-      console.log("⏭️  [Sidebar] Already fetched, skipping duplicate");
+    // Skip if already fetched globally (prevents duplicate API calls)
+    if (globalNotificationFetchRef.current || isFetchingRef.current) {
+      console.log(
+        "⏭️  [Sidebar] Notification already fetched globally, skipping"
+      );
       return;
     }
+
+    // Mark as fetching immediately to prevent concurrent requests
+    isFetchingRef.current = true;
 
     const fetchNotificationCount = async () => {
       try {
         console.log("🔔 [Sidebar] Fetching unread count...");
         const response = await apiService.getNotificationCount();
         setNotificationCount(response.unreadsCount);
+        globalNotificationFetchRef.current = true;
         console.log(
           "✅ [Sidebar] Unread count updated:",
           response.unreadsCount
         );
       } catch (error) {
         console.error("❌ [Sidebar] Error fetching notification count:", error);
+      } finally {
+        isFetchingRef.current = false;
       }
     };
 
     // Fetch on mount (when user first logs in)
     console.log("📍 [Sidebar] useEffect mounted - fetching initial count");
-    hasInitialFetch.current = true;
     fetchNotificationCount();
 
-    // Listen for manual refresh event from Notifications page (after marking as read)
+    // Listen for notification count change event from Notifications page
+    const handleCountChange = (event: any) => {
+      console.log(
+        "📢 [Sidebar] Notification count changed event received:",
+        event.detail
+      );
+      setNotificationCount(event.detail.unreadsCount);
+    };
+
+    // Listen for manual refresh event (fallback - triggers full fetch)
     const handleRefresh = () => {
       console.log("📢 [Sidebar] Refresh event received - fetching count");
+      globalNotificationFetchRef.current = false;
+      isFetchingRef.current = false;
       fetchNotificationCount();
     };
 
+    window.addEventListener("notificationCountChanged", handleCountChange);
     window.addEventListener("refreshNotificationCount", handleRefresh);
 
     return () => {
       console.log("📍 [Sidebar] useEffect cleanup");
+      window.removeEventListener("notificationCountChanged", handleCountChange);
       window.removeEventListener("refreshNotificationCount", handleRefresh);
     };
-  }, []);
+  }, [user?.id]); // Reset when user changes (logout/login)
 
   const navItems = useMemo(
     () => [
       { name: "Dashboard", path: "Dashboard" as AppPath },
-      { name: "View Tasks", path: "TaskList" as AppPath },
-      ...(user?.role === "Manager"
+      ...(user?.role !== "Manager" && user?.role !== "Admin"
+        ? [{ name: "View Tasks", path: "TaskList" as AppPath }]
+        : []),
+      ...(user?.role === "Manager" || user?.role === "Admin"
         ? [{ name: "Add Task", path: "AddTask" as AppPath }]
         : []),
-      ...(user?.role === "Manager"
+      ...(user?.role === "Manager" || user?.role === "Admin"
         ? [{ name: "Register User", path: "Register" as AppPath }]
         : []),
     ],

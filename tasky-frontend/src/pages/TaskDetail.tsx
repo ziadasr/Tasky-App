@@ -19,17 +19,22 @@ type AppPath =
 type NavigateFunction = (
   path: AppPath,
   taskId?: string | null,
-  filterStatus?: string | null
+  filterStatus?: string | null,
+  action?: string | null
 ) => void;
 
 interface TaskDetailProps {
   onNavigate: NavigateFunction;
   taskId?: string | null;
+  action?: string | null;
 }
 
-export const TaskDetailPage: React.FC<TaskDetailProps> = ({ onNavigate }) => {
+export const TaskDetailPage: React.FC<TaskDetailProps> = ({
+  onNavigate,
+  action,
+}) => {
   const { user } = useAuth();
-  const { selectedTask } = useTaskDetail();
+  const { selectedTask, setSelectedTask } = useTaskDetail();
   const [task, setTask] = useState<Task | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -52,6 +57,14 @@ export const TaskDetailPage: React.FC<TaskDetailProps> = ({ onNavigate }) => {
       setError("Task not found. Please go back to the task list.");
     }
   }, [selectedTask]);
+
+  // Auto-open report modal if action is "report"
+  useEffect(() => {
+    if (action === "report" && task) {
+      console.log("📝 [TaskDetail] Auto-opening report modal");
+      setShowReportModal(true);
+    }
+  }, [action, task]);
 
   if (error) {
     return (
@@ -116,11 +129,8 @@ export const TaskDetailPage: React.FC<TaskDetailProps> = ({ onNavigate }) => {
     );
   }
 
-  // Determine if user can edit (only creator/manager)
-  const canEdit =
-    user?.id === task.createdBy ||
-    user?.role === "Manager" ||
-    user?.role === "Admin";
+  // Determine if user can edit (only creator or admin)
+  const canEdit = user?.id === task.createdBy || user?.role === "Admin";
 
   // Only employees (not managers/admins) can report tasks
   const canReport =
@@ -271,7 +281,10 @@ export const TaskDetailPage: React.FC<TaskDetailProps> = ({ onNavigate }) => {
                     ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400"
                     : "hover:bg-indigo-600 hover:text-white"
                 }`}
-                onClick={() => onNavigate("EditTask", task.id?.toString())}
+                onClick={() => {
+                  setSelectedTask(task);
+                  onNavigate("EditTask", task.id?.toString());
+                }}
                 title={
                   task.status === "completed"
                     ? "Cannot edit completed tasks"

@@ -5,34 +5,7 @@ import sequelize from "../utils/sequelize";
 /**
  * Executes the activation logic for a scheduled task.
  * Called by the BullMQ Worker.
-//  */
-
-//!this is the working function to activate scheduled tasks
-// export const activateTaskInDB = async (taskId: number): Promise<void> => {
-//   // 1. Fetch the task and acquire a transaction for safety
-//   const task = await Task.findByPk(taskId);
-
-//   if (!task) {
-//     console.error(
-//       `Task ${taskId} not found during activation. It might have been deleted.`
-//     );
-//     return;
-//   }
-
-//   // 2. Business Logic: Check conditions and change state
-//   if (task.status === "scheduled") {
-//     // Change state from scheduled to active/pending
-//     await task.update({
-//       status: "pending",
-//       // isNotified: true, // If you want to send a notification here
-//     });
-
-//     console.log(`[Task ${taskId}] Status changed to PENDING in PostgreSQL.`);
-
-//     // --- Side Effect (Example Notification) ---
-//     // You would place the actual sendEmail logic here
-//   }
-// };
+ */
 
 export const activateTaskInDB = async (taskId: number): Promise<void> => {
   // Acquire a transaction outside the try/catch for proper error handling

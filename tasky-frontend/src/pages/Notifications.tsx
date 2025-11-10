@@ -7,12 +7,10 @@ import { Notification } from "../types/user";
 
 interface NotificationsProps {
   onNavigate: NavigateFunction;
-  onRefreshNotificationCount?: () => void;
 }
 
 export const NotificationsPage: React.FC<NotificationsProps> = ({
   onNavigate,
-  onRefreshNotificationCount,
 }) => {
   const { setSelectedTask } = useTaskDetail();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -72,17 +70,16 @@ export const NotificationsPage: React.FC<NotificationsProps> = ({
         prevNotifications.map((n) => ({ ...n, isRead: true }))
       );
 
-      // Fetch and update the unread count
-      const countResponse = await apiService.getNotificationCount();
-      setUnreadCount(countResponse.unreadsCount);
-      console.log(
-        `📊 [Notifications] Updated unread count: ${countResponse.unreadsCount}`
-      );
+      // Update unread count to 0
+      setUnreadCount(0);
+      console.log(`📊 [Notifications] All notifications marked as read`);
 
-      // Refresh notification count in Sidebar
-      if (onRefreshNotificationCount) {
-        onRefreshNotificationCount();
-      }
+      // Dispatch event with unread count so Sidebar updates immediately without API call
+      window.dispatchEvent(
+        new CustomEvent("notificationCountChanged", {
+          detail: { unreadsCount: 0 },
+        })
+      );
 
       console.log(
         `✅ Successfully marked ${response.rowsMarked} notifications as read`

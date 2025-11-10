@@ -37,7 +37,8 @@ export type AppPath =
 export type NavigateFunction = (
   path: AppPath,
   taskId?: string | null,
-  filterStatus?: string | null
+  filterStatus?: string | null,
+  action?: string | null
 ) => void;
 
 // Alias for backward compatibility
@@ -94,6 +95,7 @@ const TaskManagerApp: React.FC = () => {
   const [routeParams, setRouteParams] = useState<{
     taskId?: string | null;
     filterStatus?: string | null;
+    action?: string | null;
     task?: any; // Store task data for temporary access
   }>({});
   const { actionRequired, isVerified } = useAuth(); // <-- Added isVerified
@@ -102,10 +104,11 @@ const TaskManagerApp: React.FC = () => {
     (
       path: AppPath,
       taskId: string | null = null,
-      filterStatus: string | null = null
+      filterStatus: string | null = null,
+      action: string | null = null
     ) => {
       setCurrentPath(path);
-      setRouteParams({ taskId, filterStatus });
+      setRouteParams({ taskId, filterStatus, action });
     },
     []
   );
@@ -178,14 +181,14 @@ const TaskManagerApp: React.FC = () => {
         );
       case "AddTask":
         return (
-          <ProtectedRoute allowedRoles={["Manager"]}>
+          <ProtectedRoute allowedRoles={["Manager", "Admin"]}>
             <TaskFormPage onNavigate={handleNavigate} />
           </ProtectedRoute>
         );
       case "EditTask":
         // Renders AddTask page but with an ID
         return (
-          <ProtectedRoute allowedRoles={["Manager"]}>
+          <ProtectedRoute allowedRoles={["Manager", "Admin"]}>
             <TaskFormPage
               onNavigate={handleNavigate}
               taskId={routeParams.taskId}
@@ -199,12 +202,13 @@ const TaskManagerApp: React.FC = () => {
             <TaskDetailPage
               onNavigate={handleNavigate}
               taskId={routeParams.taskId}
+              action={routeParams.action}
             />
           </ProtectedRoute>
         );
       case "Register":
         return (
-          <ProtectedRoute allowedRoles={["Manager"]}>
+          <ProtectedRoute allowedRoles={["Manager", "Admin"]}>
             <RegisterPage />
           </ProtectedRoute>
         );
@@ -230,18 +234,7 @@ const TaskManagerApp: React.FC = () => {
           <ProtectedRoute
             allowedRoles={["Admin", "User", "Employee", "Manager"]}
           >
-            <NotificationsPage
-              onNavigate={handleNavigate}
-              onRefreshNotificationCount={() => {
-                // Trigger a refresh of notification count
-                // This will be handled by the Sidebar component
-                // We use a simple approach: dispatch an event or call a function
-                // For now, we'll use window to communicate
-                window.dispatchEvent(
-                  new CustomEvent("refreshNotificationCount")
-                );
-              }}
-            />
+            <NotificationsPage onNavigate={handleNavigate} />
           </ProtectedRoute>
         );
       default:

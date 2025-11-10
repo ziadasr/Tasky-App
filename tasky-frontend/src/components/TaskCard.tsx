@@ -9,6 +9,8 @@ import { NavigateFunction } from "../app";
 interface TaskCardProps {
   task: Task;
   onNavigate: NavigateFunction;
+  showAssignedTo?: boolean; // Show "Assigned to" instead of "Created by" for manager-created tasks
+  treatAsEmployee?: boolean; // When true, manager sees employee buttons (Start, Report, End) instead of Edit
 }
 
 // Helper to determine base color class for the left status bar
@@ -47,7 +49,12 @@ const getStatusBadgeColor = (status: TaskStatus): string => {
   }
 };
 
-export const TaskCard: React.FC<TaskCardProps> = ({ task, onNavigate }) => {
+export const TaskCard: React.FC<TaskCardProps> = ({
+  task,
+  onNavigate,
+  showAssignedTo = false,
+  treatAsEmployee = false,
+}) => {
   const { isAdmin, user } = useAuth();
   const { startTask, completeTask } = useTasks();
   const { setSelectedTask } = useTaskDetail();
@@ -111,9 +118,17 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onNavigate }) => {
           {/* Metadata (Left Side Footer) */}
           <div className="flex flex-wrap items-center text-sm space-x-4 text-gray-500">
             <span className="text-sm text-gray-700">
-              {isManagerOrAdmin ? "Created by:" : "Assigned by:"}{" "}
+              {showAssignedTo
+                ? "Assigned to:"
+                : isManagerOrAdmin
+                ? "Created by:"
+                : "Assigned by:"}{" "}
               <span className="font-semibold text-gray-800">
-                {isManagerOrAdmin ? creatorName : assigneeName}
+                {showAssignedTo
+                  ? assigneeName
+                  : isManagerOrAdmin
+                  ? creatorName
+                  : assigneeName}
               </span>
             </span>
             <span className="flex items-center space-x-1">
@@ -141,71 +156,79 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onNavigate }) => {
 
           {/* Action Buttons (Right Side Footer) */}
           <div className="flex space-x-2 flex-shrink-0">
-            {/* Manager/Admin Edit Button - NOT for completed tasks */}
-            {isManagerOrAdmin && task.status !== "completed" && (
-              <Button
-                variant="outline"
-                className="py-2 px-4 text-sm"
-                onClick={(e: any) => {
-                  e.stopPropagation();
-                  onNavigate("EditTask", task.id);
-                }}
-              >
-                Edit
-              </Button>
-            )}
+            {/* Manager/Admin Edit Button - NOT for completed tasks, and NOT when treating as employee */}
+            {isManagerOrAdmin &&
+              !treatAsEmployee &&
+              task.status !== "completed" && (
+                <Button
+                  variant="outline"
+                  className="py-2 px-4 text-sm"
+                  onClick={(e: any) => {
+                    e.stopPropagation();
+                    // Store task in context first so form can access it
+                    setSelectedTask(task);
+                    onNavigate("EditTask", task.id);
+                  }}
+                >
+                  Edit
+                </Button>
+              )}
 
-            {/* Standard User Actions (for 'pending' tasks) */}
-            {!isManagerOrAdmin && task.status === "pending" && (
-              <>
-                <Button
-                  variant="secondary"
-                  className="py-2 px-4 text-sm"
-                  onClick={(e: any) => {
-                    e.stopPropagation();
-                    console.log("Report issue:", task.id);
-                  }}
-                >
-                  Report Issue
-                </Button>
-                <Button
-                  variant="primary"
-                  className="py-2 px-4 text-sm"
-                  onClick={(e: any) => {
-                    e.stopPropagation();
-                    startTask(task.id);
-                  }}
-                >
-                  Start Task Now
-                </Button>
-              </>
-            )}
+            {/* Standard User Actions (for 'pending' tasks) - Show for employees OR managers in "assigned to me" tab */}
+            {(!isManagerOrAdmin || treatAsEmployee) &&
+              task.status === "pending" && (
+                <>
+                  <Button
+                    variant="secondary"
+                    className="py-2 px-4 text-sm"
+                    onClick={(e: any) => {
+                      e.stopPropagation();
+                      setSelectedTask(task);
+                      onNavigate("TaskDetail", task.id, null, "report");
+                    }}
+                  >
+                    Report Issue
+                  </Button>
+                  <Button
+                    variant="primary"
+                    className="py-2 px-4 text-sm"
+                    onClick={(e: any) => {
+                      e.stopPropagation();
+                      startTask(task.id);
+                    }}
+                  >
+                    Start Task Now
+                  </Button>
+                </>
+              )}
 
-            {/* Standard User Actions (for 'in_progress' tasks) */}
-            {!isManagerOrAdmin && task.status === "in_progress" && (
-              <>
-                <Button
-                  variant="secondary"
-                  className="py-2 px-4 text-sm"
-                  onClick={(e: any) => {
-                    e.stopPropagation();
-                    console.log("Report issue:", task.id);
-                  }}
-                >
-                  Report Issue
-                </Button>
-                <Button
-                  variant="danger"
-                  className="py-2 px-4 text-sm"
-                  onClick={(e: any) => {
-                    e.stopPropagation();
-                    completeTask(task.id);
-                  }}
-                >
-                  End Task
-                </Button>
-              </>
-            )}
+            {/* Standard User Actions (for 'in_progress' tasks) - Show for employees OR managers in "assigned to me" tab */}
+            {(!isManagerOrAdmin || treatAsEmployee) &&
+              task.status === "in_progress" && (
+                <>
+                  <Button
+                    variant="secondary"
+                    className="py-2 px-4 text-sm"
+                    onClick={(e: any) => {
+                      e.stopPropagation();
+                      setSelectedTask(task);
+                      onNavigate("TaskDetail", task.id, null, "report");
+                    }}
+                  >
+                    Report Issue
+                  </Button>
+                  <Button
+                    variant="danger"
+                    className="py-2 px-4 text-sm"
+                    onClick={(e: any) => {
+                      e.stopPropagation();
+                      completeTask(task.id);
+                    }}
+                  >
+                    End Task
+                  </Button>
+                </>
+              )}
           </div>
         </div>
       </Card>

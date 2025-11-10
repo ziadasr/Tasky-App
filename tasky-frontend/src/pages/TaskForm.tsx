@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, ChangeEvent } from "react";
 import { useTasks } from "../context/TaskContext";
 import { useAuth } from "../context/AuthContext";
+import { useTaskDetail } from "../context/TaskDetailContext";
 import {
   Card,
   Input,
@@ -42,6 +43,7 @@ export const TaskFormPage: React.FC<TaskFormProps> = ({
   const { saveTask, updateTask, getTaskById, availableUsers, fetchTasks } =
     useTasks();
   const { user } = useAuth();
+  const { selectedTask } = useTaskDetail();
   const [formData, setFormData] = useState<TaskFormData>(initialFormData);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +52,14 @@ export const TaskFormPage: React.FC<TaskFormProps> = ({
   // Load task data if editing
   useEffect(() => {
     if (isEdit && taskId) {
-      const taskToEdit = getTaskById(taskId);
+      // First try to get from selectedTask context (when navigating from TaskDetail)
+      let taskToEdit = selectedTask;
+
+      // If not in context, try to find it in the tasks list
+      if (!taskToEdit) {
+        taskToEdit = getTaskById(taskId);
+      }
+
       if (taskToEdit) {
         setFormData({
           title: taskToEdit.title || "",
@@ -70,7 +79,7 @@ export const TaskFormPage: React.FC<TaskFormProps> = ({
         assigneeId: String(availableUsers[0]?.id || user?.id || ""),
       }));
     }
-  }, [taskId, isEdit, getTaskById, user?.id, availableUsers]);
+  }, [taskId, isEdit, selectedTask, getTaskById, user?.id, availableUsers]);
 
   const handleChange = useCallback(
     (
