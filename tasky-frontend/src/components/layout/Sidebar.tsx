@@ -89,6 +89,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
       ...(user?.role === "Manager" || user?.role === "Admin"
         ? [{ name: "Register User", path: "Register" as AppPath }]
         : []),
+      ...(user?.role === "Admin"
+        ? [{ name: "Organization", path: "AdminOrganization" as AppPath }]
+        : []),
     ],
     [user?.role]
   );

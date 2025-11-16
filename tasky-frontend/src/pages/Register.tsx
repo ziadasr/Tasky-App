@@ -23,9 +23,15 @@ export const RegisterPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<Message | null>(null);
 
+  // Determine if user is manager or admin
+  const isManager = user?.role === "Manager";
+
+  // For managers: use their department; for admins: use input value
+  const finalDepartment = isManager ? user?.department || "" : department;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !salary || !role || !department) {
+    if (!name || !email || !salary || !role || !finalDepartment) {
       setMessage({ type: "error", text: "Please fill in all fields." });
       return;
     }
@@ -45,7 +51,7 @@ export const RegisterPage: React.FC = () => {
         parseFloat(salary),
         user?.id ? parseInt(user.id as string) : 0,
         role,
-        department
+        finalDepartment
       );
       setMessage({
         type: "success",
@@ -57,7 +63,9 @@ export const RegisterPage: React.FC = () => {
       setEmail("");
       setSalary("");
       setRole("Employee");
-      setDepartment("");
+      if (!isManager) {
+        setDepartment("");
+      }
     } catch (error) {
       setMessage({
         type: "error",
@@ -141,14 +149,28 @@ export const RegisterPage: React.FC = () => {
             </div>
           </div>
 
-          <Input
-            label="Department"
-            id="department"
-            placeholder="Engineering"
-            value={department}
-            onChange={(e) => setDepartment(e.target.value)}
-            required
-          />
+          {isManager ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Department (Your Department)
+              </label>
+              <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 font-medium">
+                {user?.department || "Not assigned"}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Managers can only add employees to their own department
+              </p>
+            </div>
+          ) : (
+            <Input
+              label="Department"
+              id="department"
+              placeholder="Engineering"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              required
+            />
+          )}
 
           <p className="text-sm text-gray-500 italic">
             Note: Users are created with the default password "TempPassword"

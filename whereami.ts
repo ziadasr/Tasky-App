@@ -42,3 +42,5 @@
 //normal users see          ==> pending, in_progress, completed, all
 //admins/managers see       ==> pending, in_progress, scheduled, completed, all
 //due and archived removed for all users
+
+//add archioive and alloww user to move completed tasks to archive

@@ -170,25 +170,6 @@ export const ManagerTaskView: React.FC<ManagerTaskViewProps> = ({
         </Card>
       ) : (
         <div className="space-y-4">
-          {/* Show helper text based on scope */}
-          {scope === "assignedToMe" && (
-            <Card className="bg-blue-50 border border-blue-200 mb-4">
-              <p className="text-sm text-blue-700">
-                💡 <strong>Assigned to Me:</strong> You can start, complete, and
-                report issues on these tasks (like a regular employee).
-              </p>
-            </Card>
-          )}
-          {scope === "assignedByMe" && (
-            <Card className="bg-amber-50 border border-amber-200 mb-4">
-              <p className="text-sm text-amber-700">
-                💡 <strong>I Created These:</strong> You can only edit these
-                tasks if they haven't been completed yet. Use the Edit button to
-                modify task details.
-              </p>
-            </Card>
-          )}
-
           {/* Task list */}
           {filteredTasks.map((task) => (
             <TaskCard

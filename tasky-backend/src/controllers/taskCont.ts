@@ -314,6 +314,7 @@ const updateTaskCont = async (req: Request, res: Response) => {
   //the optional updates possible
   const userUpdates = req.body;
   const VALID_UPDATE_FIELDS = [
+    //! specific class to be the request --> payload
     "title",
     "description",
     "priority",

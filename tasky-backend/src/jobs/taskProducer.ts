@@ -30,7 +30,6 @@ export const taskQueue = new Queue("taskActivationQueue", { connection });
 interface TaskActivationJob {
   taskId: number; //that should match the primapry key type of the task model
 }
-
 /**
  * Schedules a task activation job in the Redis queue.
  * @returns The unique BullMQ Job ID string.

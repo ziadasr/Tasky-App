@@ -3,6 +3,8 @@ import { useTasks } from "../context/TaskContext";
 import { useAuth } from "../context/AuthContext";
 import { Card, Button, Spinner } from "../components/common/UIComponents";
 import { ManagerTaskView } from "../components/ManagerTaskView";
+import { AdminOrganizationView } from "../components/AdminOrganizationView";
+import { ManagerOrganizationView } from "../components/ManagerOrganizationView";
 import { NavigateFunction } from "../app";
 
 interface DashboardProps {
@@ -11,9 +13,10 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const { user } = useAuth();
-  const [managerTab, setManagerTab] = useState<"assignedToMe" | "assignedByMe">(
-    "assignedToMe"
-  );
+  const [managerTab, setManagerTab] = useState<
+    "assignedToMe" | "assignedByMe" | "employees"
+  >("assignedToMe");
+  const [adminTab, setAdminTab] = useState<"tasks" | "organization">("tasks");
 
   // Only use TaskContext for employees (managers/admins use ManagerTaskView)
   const { taskCount, statusCounts, loading, error } = useTasks();
@@ -86,9 +89,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
       {/* Admin View */}
       {user.role === "Admin" && (
-        <div className="mb-8">
-          <ManagerTaskView scope="all" onNavigate={onNavigate} />
-        </div>
+        <>
+          <div className="mb-6 flex gap-2 border-b border-gray-200">
+            <button
+              onClick={() => setAdminTab("tasks")}
+              className={`px-4 py-3 font-medium transition-colors ${
+                adminTab === "tasks"
+                  ? "text-indigo-600 border-b-2 border-indigo-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              📋 All Tasks
+            </button>
+            <button
+              onClick={() => setAdminTab("organization")}
+              className={`px-4 py-3 font-medium transition-colors ${
+                adminTab === "organization"
+                  ? "text-indigo-600 border-b-2 border-indigo-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              👥 Organization
+            </button>
+          </div>
+          <div className="mb-8">
+            {adminTab === "tasks" ? (
+              <ManagerTaskView scope="all" onNavigate={onNavigate} />
+            ) : (
+              <AdminOrganizationView />
+            )}
+          </div>
+        </>
       )}
 
       {/* Manager Tabs */}
@@ -112,15 +143,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 : "text-gray-600 hover:text-gray-900"
             }`}
           >
-            📤 Tasks I Created
+            📤 Tasks Assigned by Me
+          </button>
+          <button
+            onClick={() => setManagerTab("employees")}
+            className={`px-4 py-3 font-medium transition-colors ${
+              managerTab === "employees"
+                ? "text-indigo-600 border-b-2 border-indigo-600"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            👥 Employees
           </button>
         </div>
       )}
 
-      {/* Manager Task View */}
+      {/* Manager Task View or Employee View */}
       {user.role === "Manager" ? (
         <div className="mb-8">
-          <ManagerTaskView scope={managerTab} onNavigate={onNavigate} />
+          {managerTab === "employees" ? (
+            <ManagerOrganizationView />
+          ) : (
+            <ManagerTaskView scope={managerTab} onNavigate={onNavigate} />
+          )}
         </div>
       ) : user.role === "Admin" ? null : (
         <>

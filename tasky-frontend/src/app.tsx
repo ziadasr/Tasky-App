@@ -15,6 +15,7 @@ import { TaskDetailPage } from "./pages/TaskDetail";
 import { ChangePassword } from "./pages/ChangePassword";
 import { VerifyCode } from "./pages/VerifyCode";
 import { NotificationsPage } from "./pages/Notifications";
+import { AdminOrganizationPage } from "./pages/AdminOrganization";
 import { Layout } from "./components/layout/Layout";
 import { TaskProvider } from "./context/TaskContext";
 import { TaskDetailProvider } from "./context/TaskDetailContext";
@@ -31,7 +32,8 @@ export type AppPath =
   | "Register"
   | "ChangePassword"
   | "VerifyCode"
-  | "Notifications";
+  | "Notifications"
+  | "AdminOrganization";
 
 // Navigation function type that all components should use
 export type NavigateFunction = (
@@ -235,6 +237,12 @@ const TaskManagerApp: React.FC = () => {
             allowedRoles={["Admin", "User", "Employee", "Manager"]}
           >
             <NotificationsPage onNavigate={handleNavigate} />
+          </ProtectedRoute>
+        );
+      case "AdminOrganization":
+        return (
+          <ProtectedRoute allowedRoles={["Admin"]}>
+            <AdminOrganizationPage onNavigate={handleNavigate} />
           </ProtectedRoute>
         );
       default:

@@ -12,10 +12,16 @@ import dotenv from "dotenv";
 import sequelize from "./src/utils/sequelize.js";
 import { initializeAssociations } from "./src/models/associations.js";
 import taskRoutes from "./src/routes/taskRoutes.js";
-
+/**
+ *redis token comparing with ips (ex)
+ *!utc dates
+ *!edited task before activation
+ *jobId table in db
+ */
 // Import routes
 import authRoutes from "./src/routes/authRoutes.js";
 import notificationRoutes from "./src/routes/notificationRoutes.js";
+import empDetailsRoutes from "./src/routes/empDetailsRoutes.js";
 
 // ES Module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -45,6 +51,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/emp-details", empDetailsRoutes);
 // Basic route
 app.get("/", (req, res) => {
   res.json({ message: "Tasky Backend API is running!" });

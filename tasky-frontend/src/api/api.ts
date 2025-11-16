@@ -455,6 +455,40 @@ export const apiService = {
         throw new Error("Network error or server connection failed.");
       }
     },
+
+  /**
+   * Fetch all employees/managers for organization view
+   */
+  getAllEmployees: async (
+    offset: number = 0,
+    limit: number = 100,
+    role?: "Admin" | "Manager" | "Employee",
+    sortBy: string = "name",
+    sortDir: "ASC" | "DESC" = "ASC"
+  ) => {
+    try {
+      const params = new URLSearchParams({
+        offset: offset.toString(),
+        limit: limit.toString(),
+        sortBy,
+        sortDir,
+      });
+
+      if (role) {
+        params.append("role", role);
+      }
+
+      const response = await axiosInstance.get(
+        `/api/emp-details/emp-details?${params.toString()}`
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error("Error fetching employees:", error);
+      throw new Error(
+        error.response?.data?.error || "Failed to fetch employees."
+      );
+    }
+  },
 };
 
 //   // Get current user info
