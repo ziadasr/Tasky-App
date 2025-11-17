@@ -1,4 +1,23 @@
+<p align="left">
 
+  <!-- Backend -->
+  <img src="https://skillicons.dev/icons?i=nodejs,express,ts" height="48" alt="Node.js, Express.js, TypeScript" />
+
+  <!-- Frontend -->
+  <img src="https://skillicons.dev/icons?i=react" height="48" alt="React" />
+
+  <!-- Database / ORM -->
+  <img src="https://skillicons.dev/icons?i=postgres" height="48" alt="PostgreSQL" />
+  <img src="https://skillicons.dev/icons?i=sequelize" height="48" alt="Sequelize" />
+
+  <!-- Concurrency / Queue -->
+  <img src="https://img.shields.io/badge/BullMQ-red?logo=redis&logoColor=white&style=for-the-badge" height="48" alt="BullMQ" />
+  <img src="https://skillicons.dev/icons?i=redis" height="48" alt="Redis" />
+
+  <!-- Tools -->
+  <img src="https://skillicons.dev/icons?i=git,github,vscode" height="48" alt="Git, GitHub, VSCode" />
+
+</p>
 # Tasky: Enterprise-Grade Concurrency & Task Management Platform
 
 ## 🌟 Executive Summary
@@ -6,9 +25,49 @@
 Tasky is a robust, full-stack task management application engineered for **system reliability and security**. This project serves as an architectural case study, demonstrating proficiency in **asynchronous processing (BullMQ/Redis)** and the implementation of **data-layer Role-Based Access Control (RBAC)** within a Node.js/Express environment.
 
 The platform enforces a three-tiered hierarchy: **Admin**, **Manager**, and **Employee**.
+🛡️ 1. Admin Capabilities
+
+Admins have full system-wide visibility and control.
+They represent the top tier of the hierarchy.
+
+Admin Can:
+✔ View all tasks created in the entire application
+✔ Assign tasks to Managers
+✔ View all Manager & Employee data, including:
+Personal details (name, email, department, salary, lastlogin)
+Employment data (salary, role)
+✔ Manage user accounts (CRUD operations, role assignments)
+✔ Access system-level analytics & monitoring
+✔ View background job logs (queue status, failures, retries)
+Admin cannot:
+✘ Directly assign tasks to Employees (must go through Managers)
+
+👨‍💼 2. Manager Capabilities
+Managers operate as mid-level leaders who oversee Employees.
+Manager Can:
+✔ Work on tasks assigned by Admins
+✔ Assign tasks to Employees
+✔ View Employee data including: (name, email, department, salary, lastlogin)
+✔ Track task progress of their department/team
+✔ Approve or reject work submissions (if implemented)
+Manager cannot:
+✘ View Admins’ private data
+✘ View employees from other managers' departments
+✘ Assign tasks directly to other Managers or Admins
+
+👷 3. Employee Capabilities
+Employees are the task executors inside the system.
+Employee Can:
+✔ View only the tasks assigned to them by their Manager
+✔ Execute tasks and submit task updates
+✔ Update task progress (Pending → In Progress → Completed)
+Employee cannot:
+✘ Assign tasks to anyone
+✘ View data of other employees
+✘ Access admin/manager dashboards
+✘ View tasks not assigned to them
 
 -----
-
 ## ⚙️ Technical Architecture & Design Principles
 
 ### 1\. Asynchronous Reliability (BullMQ & Redis) ⚡
