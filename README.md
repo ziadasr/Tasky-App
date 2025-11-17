@@ -1,8 +1,3 @@
-That run script provides crucial details about running the backend, worker, and frontend separately, especially the dependency on WSL/Linux for the Redis server.
-
-Here is the complete, professionally edited `README.md` file, incorporating your specific run commands and the previous content.
-
------
 
 # Tasky: Enterprise-Grade Concurrency & Task Management Platform
 
